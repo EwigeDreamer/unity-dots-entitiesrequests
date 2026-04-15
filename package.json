@@ -1,0 +1,23 @@
+{
+  "name": "com.ewigedreamer.dots.entitiesrequests",
+  "version": "0.1.0",
+  "displayName": "ED Unity DOTS Entities Requests",
+  "description": "Request system for Unity DOTS",
+  "unity": "6000.3",
+  "dependencies": {
+    "com.unity.entities": "1.4.5",
+    "com.unity.collections": "2.6.5",
+    "com.unity.burst": "1.8.27"
+  },
+  "keywords": [
+    "unity",
+    "dots",
+    "requests",
+    "burst"
+  ],
+  "author": {
+    "name": "Pavel Sborshchikov",
+    "url": "https://github.com/EwigeDreamer",
+    "email": "ewigedreamer@gmail.com"
+  }
+}
