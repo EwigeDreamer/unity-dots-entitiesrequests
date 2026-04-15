@@ -35,13 +35,16 @@ https://github.com/EwigeDreamer/unity-dots-entitiesrequests.git
 First, define an unmanaged struct for your request:
 
 ```csharp
-public struct MyRequest { }
+public struct MyRequest
+{
+    public int MyValue;
+}
 ```
 
 Register the request type using the `RegisterRequest` attribute (assembly‑level):
 
 ```csharp
-using EntitiesRequests;
+using ED.DOTS.EntitiesRequests;
 
 [assembly: RegisterRequest(typeof(MyRequest))]
 ```
@@ -51,7 +54,7 @@ In the sending system, obtain a `RequestWriter<T>` and write requests:
 ```csharp
 using Unity.Burst;
 using Unity.Entities;
-using EntitiesRequests;
+using ED.DOTS.EntitiesRequests;
 
 [BurstCompile]
 public partial struct WriteRequestSystem : ISystem
@@ -67,7 +70,7 @@ public partial struct WriteRequestSystem : ISystem
     [BurstCompile]
     public void OnUpdate(ref SystemState state)
     {
-        requestWriter.Write(new MyRequest());
+        requestWriter.Write(new MyRequest { MyValue = 123 });
     }
 }
 ```
@@ -77,7 +80,7 @@ In the receiving system, obtain a `RequestReader<T>`, read the pending requests,
 ```csharp
 using Unity.Burst;
 using Unity.Entities;
-using EntitiesRequests;
+using ED.DOTS.EntitiesRequests;
 
 [BurstCompile]
 public partial struct ReadRequestSystem : ISystem
@@ -118,7 +121,7 @@ public partial class WriteRequestSystemClass : SystemBase
 
     protected override void OnUpdate()
     {
-        requestWriter.Write(new MyRequest());
+        requestWriter.Write(new MyRequest { MyValue = 123 });
     }
 }
 ```
@@ -147,7 +150,7 @@ A custom `NativeContainer` `Requests<T>` is provided for manual control.
 
 ```csharp
 using Unity.Collections;
-using EntitiesRequests;
+using ED.DOTS.EntitiesRequests;
 
 // Create a new request container
 var requests = new Requests<MyRequest>(32, Allocator.Temp);
