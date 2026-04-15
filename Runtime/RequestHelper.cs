@@ -1,8 +1,8 @@
-﻿using EntitiesRequests.Internal;
+﻿using ED.DOTS.EntitiesRequests.Internal;
 using Unity.Collections;
 using Unity.Entities;
 
-namespace EntitiesRequests
+namespace ED.DOTS.EntitiesRequests
 {
     public static class RequestHelper
     {

@@ -2,11 +2,11 @@
 using System.Runtime.CompilerServices;
 using Unity.Collections;
 using Unity.Collections.LowLevel.Unsafe;
-using EntitiesRequests.LowLevel.Unsafe;
-using EntitiesRequests.Internal;
+using ED.DOTS.EntitiesRequests.LowLevel.Unsafe;
+using ED.DOTS.EntitiesRequests.Internal;
 using Unity.Burst;
 
-namespace EntitiesRequests
+namespace ED.DOTS.EntitiesRequests
 {
     [NativeContainer]
     public struct Requests<T> : IDisposable where T : unmanaged

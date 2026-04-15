@@ -1,8 +1,7 @@
 ﻿using Unity.Burst;
 using Unity.Entities;
-using EntitiesRequests;
 
-namespace EntitiesRequests.Internal
+namespace ED.DOTS.EntitiesRequests.Internal
 {
     [BurstCompile]
     [UpdateInGroup(typeof(RequestSystemGroup))]

@@ -2,7 +2,7 @@
 using Unity.Collections;
 using Unity.Collections.LowLevel.Unsafe;
 
-namespace EntitiesRequests.Internal
+namespace ED.DOTS.EntitiesRequests.Internal
 {
     /// <summary>
     /// Container for request buffers with fixed roles:

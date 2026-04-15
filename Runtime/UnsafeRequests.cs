@@ -3,9 +3,9 @@ using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using Unity.Collections;
 using Unity.Collections.LowLevel.Unsafe;
-using EntitiesRequests.Internal;
+using ED.DOTS.EntitiesRequests.Internal;
 
-namespace EntitiesRequests.LowLevel.Unsafe
+namespace ED.DOTS.EntitiesRequests.LowLevel.Unsafe
 {
     /// <summary>
     /// Unsafe version of Requests&lt;T&gt;. Manages raw memory for request buffers.

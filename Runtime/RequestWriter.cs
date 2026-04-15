@@ -1,8 +1,8 @@
 ﻿using System.Runtime.CompilerServices;
 using Unity.Collections.LowLevel.Unsafe;
-using EntitiesRequests.Internal;
+using ED.DOTS.EntitiesRequests.Internal;
 
-namespace EntitiesRequests
+namespace ED.DOTS.EntitiesRequests
 {
     [NativeContainer]
     [NativeContainerIsAtomicWriteOnly]
@@ -47,7 +47,7 @@ namespace EntitiesRequests
     }
 }
 
-namespace EntitiesRequests.LowLevel.Unsafe
+namespace ED.DOTS.EntitiesRequests.LowLevel.Unsafe
 {
     public unsafe struct UnsafeRequestWriter<T> where T : unmanaged
     {

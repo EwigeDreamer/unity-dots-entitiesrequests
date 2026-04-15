@@ -1,6 +1,6 @@
 ﻿using Unity.Entities;
 
-namespace EntitiesRequests
+namespace ED.DOTS.EntitiesRequests
 {
     [CreateBefore(typeof(SimulationSystemGroup))]
     [UpdateInGroup(typeof(SimulationSystemGroup), OrderLast = true)]

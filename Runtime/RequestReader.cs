@@ -1,9 +1,9 @@
 ﻿using System.Runtime.CompilerServices;
 using Unity.Collections.LowLevel.Unsafe;
-using EntitiesRequests.Internal;
+using ED.DOTS.EntitiesRequests.Internal;
 using System.Collections.Generic;
 
-namespace EntitiesRequests
+namespace ED.DOTS.EntitiesRequests
 {
     [NativeContainer]
     [NativeContainerIsReadOnly]
@@ -98,7 +98,7 @@ namespace EntitiesRequests
     }
 }
 
-namespace EntitiesRequests.LowLevel.Unsafe
+namespace ED.DOTS.EntitiesRequests.LowLevel.Unsafe
 {
     public unsafe struct UnsafeRequestReader<T> where T : unmanaged
     {

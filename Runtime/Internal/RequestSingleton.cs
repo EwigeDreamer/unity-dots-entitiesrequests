@@ -1,6 +1,6 @@
 ﻿using Unity.Entities;
 
-namespace EntitiesRequests.Internal
+namespace ED.DOTS.EntitiesRequests.Internal
 {
     public unsafe struct RequestSingleton<T> : IComponentData where T : unmanaged
     {
