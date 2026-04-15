@@ -5,6 +5,7 @@ namespace ED.DOTS.EntitiesRequests.Internal
 {
     [BurstCompile]
     [UpdateInGroup(typeof(RequestSystemGroup))]
+    [WorldSystemFilter(WorldSystemFilterFlags.ClientSimulation | WorldSystemFilterFlags.ServerSimulation | WorldSystemFilterFlags.LocalSimulation)]
     public unsafe abstract partial class RequestSystemBase<T> : SystemBase where T : unmanaged
     {
         [BurstCompile]

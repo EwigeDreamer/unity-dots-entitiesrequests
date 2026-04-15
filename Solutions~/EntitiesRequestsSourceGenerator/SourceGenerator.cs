@@ -34,7 +34,7 @@ namespace EntitiesRequestsSourceGenerator
                         continue;
                     }
 
-                    var @namespace = typeSymbol?.ContainingNamespace?.Name;
+                    var @namespace = typeSymbol?.ContainingNamespace?.ToString();
 
                     GenerateCode(name, @namespace, out var file, out var code);
                     context.AddSource(file, code);
@@ -62,7 +62,7 @@ using ED.DOTS.EntitiesRequests.Internal;
 
 {(string.IsNullOrWhiteSpace(@namespace) ? "" : $@"namespace {@namespace}
 {{")}
-    partial class {name}_RequestSystem : EventSystemBase<{fullname}> {{ }}
+    partial class {name}_RequestSystem : RequestSystemBase<{fullname}> {{ }}
 {(string.IsNullOrWhiteSpace(@namespace) ? "" : $@"
 }}")}
 ";
