@@ -1,23 +1,24 @@
-﻿using System.Linq;
-using Microsoft.CodeAnalysis;
+﻿using Microsoft.CodeAnalysis;
 
-namespace EntitiesRequestsSourceGenerator
+namespace ED.DOTS.EntitiesRequests.SourceGenerator
 {
-    public static class CodeBuildHelper
+    internal class CodeBuildHelper
     {
-        private static readonly string[] PossibleAttributeNames = new[]
-        {
-            "ED.DOTS.EntitiesRequests.RegisterRequestAttribute",
-            "ED.DOTS.EntitiesRequests.RegisterRequest",
-            "RegisterRequestAttribute",
-            "RegisterRequest",
-        };
+        private readonly Compilation _compilation;
+        private readonly INamedTypeSymbol _registerRequestAttributeSymbol;
 
-        public static bool IsRegistrationAttribute(AttributeData attribute)
+        public CodeBuildHelper(Compilation compilation)
         {
-            if (attribute?.AttributeClass != null)
-                return PossibleAttributeNames.Any(attribute.AttributeClass.Name.Equals);
-            return false;
+            _compilation = compilation;
+            _registerRequestAttributeSymbol = compilation.GetTypeByMetadataName("ED.DOTS.EntitiesRequests.RegisterRequestAttribute");
+        }
+
+        public bool IsRegistrationAttribute(AttributeData attribute)
+        {
+            if (attribute?.AttributeClass == null)
+                return false;
+
+            return SymbolEqualityComparer.Default.Equals(attribute.AttributeClass, _registerRequestAttributeSymbol);
         }
     }
 }
