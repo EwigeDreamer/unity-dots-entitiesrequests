@@ -1,0 +1,23 @@
+{
+    "name": "EwigeDreamer.DOTS.EntitiesRequests.Tests",
+    "rootNamespace": "ED.DOTS.EntitiesRequests.Tests",
+    "references": [
+        "UnityEditor.TestRunner",
+        "UnityEngine.TestRunner",
+        "Unity.Entities",
+        "Unity.Collections",
+        "Unity.Burst",
+        "EwigeDreamer.DOTS.EntitiesRequests"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": true,
+    "overrideReferences": true,
+    "precompiledReferences": [
+        "nunit.framework.dll"
+    ],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
