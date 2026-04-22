@@ -25,6 +25,14 @@ namespace ED.DOTS.EntitiesRequests
         [BurstCompile]
         protected override void OnUpdate()
         {
+            // This call registers a read access to the RequestSingleton<T> component with the ECS dependency system.
+            // Requesting a read-only ComponentTypeHandle informs the scheduler that this system will read the singleton.
+            // Combined with the write declaration in the writer systems, this creates a proper dependency chain:
+            // all writer systems' jobs will complete before this system's OnUpdate runs.
+            // This ensures that when we call Requests.Update() and clear the write buffer, no pending write jobs are still using it.
+            // The handle is not stored because we only need the dependency registration side effect.
+            GetComponentTypeHandle<RequestSingleton<T>>(true);
+            
             CompleteDependency();
             
             if (SystemAPI.TryGetSingleton<RequestSingleton<T>>(out var singleton))

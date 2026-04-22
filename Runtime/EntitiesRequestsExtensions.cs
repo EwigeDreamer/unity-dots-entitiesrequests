@@ -1,3 +1,4 @@
+using System.Runtime.CompilerServices;
 using Unity.Entities;
 
 namespace ED.DOTS.EntitiesRequests
@@ -18,6 +19,14 @@ namespace ED.DOTS.EntitiesRequests
         public static RequestWriter<T> GetRequestWriter<T>(this ref SystemState state)
             where T : unmanaged
         {
+            // This call registers a write access to the RequestSingleton<T> component with the ECS dependency system.
+            // Even though we don't use the returned handle, the act of requesting a writable ComponentTypeHandle
+            // informs the ECS scheduler that this system intends to write to the singleton.
+            // This ensures that any jobs writing to the request buffer are completed before the request system updates the buffer,
+            // preventing race conditions and the "InvalidOperationException" about pending write jobs.
+            // The handle is not stored because we only need the side effect of dependency registration, not direct access.
+            state.GetComponentTypeHandle<RequestSingleton<T>>();
+            
             return EntitiesRequestsHelper.GetOrCreateSingleton<T>(ref state).Requests.GetWriter();
         }
 
@@ -31,6 +40,14 @@ namespace ED.DOTS.EntitiesRequests
         public static RequestWriter<T> GetRequestWriter<T>(this SystemBase systemBase)
             where T : unmanaged
         {
+            // This call registers a write access to the RequestSingleton<T> component with the ECS dependency system.
+            // Even though we don't use the returned handle, the act of requesting a writable ComponentTypeHandle
+            // informs the ECS scheduler that this system intends to write to the singleton.
+            // This ensures that any jobs writing to the request buffer are completed before the request system updates the buffer,
+            // preventing race conditions and the "InvalidOperationException" about pending write jobs.
+            // The handle is not stored because we only need the side effect of dependency registration, not direct access.
+            systemBase.CheckedStateRef.GetComponentTypeHandle<RequestSingleton<T>>();
+
             return GetRequestWriter<T>(ref systemBase.CheckedStateRef);
         }
 
@@ -44,6 +61,14 @@ namespace ED.DOTS.EntitiesRequests
         public static RequestWriter<T> GetRequestWriter<T>(this EntityManager entityManager)
             where T : unmanaged
         {
+            // This call registers a write access to the RequestSingleton<T> component with the ECS dependency system.
+            // Even though we don't use the returned handle, the act of requesting a writable ComponentTypeHandle
+            // informs the ECS scheduler that this system intends to write to the singleton.
+            // This ensures that any jobs writing to the request buffer are completed before the request system updates the buffer,
+            // preventing race conditions and the "InvalidOperationException" about pending write jobs.
+            // The handle is not stored because we only need the side effect of dependency registration, not direct access.
+            entityManager.GetComponentTypeHandle<RequestSingleton<T>>(false);
+
             return EntitiesRequestsHelper.GetOrCreateSingleton<T>(entityManager).Requests.GetWriter();
         }
 
