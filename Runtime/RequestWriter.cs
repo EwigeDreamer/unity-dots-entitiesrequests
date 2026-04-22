@@ -1,74 +1,99 @@
 ﻿using System.Runtime.CompilerServices;
+using Unity.Burst;
 using Unity.Collections.LowLevel.Unsafe;
-using ED.DOTS.EntitiesRequests.Internal;
 
 namespace ED.DOTS.EntitiesRequests
 {
+    /// <summary>
+    /// Provides write access to requests of type <typeparamref name="T"/>.
+    /// Can be safely cached across frames; always writes to the current active write buffer.
+    /// </summary>
+    /// <typeparam name="T">Unmanaged request type.</typeparam>
+    [BurstCompile]
     [NativeContainer]
     [NativeContainerIsAtomicWriteOnly]
     public unsafe struct RequestWriter<T> where T : unmanaged
     {
         [NativeDisableUnsafePtrRestriction]
-        private RequestsData<T>* buffer;
-
-#if ENABLE_UNITY_COLLECTIONS_CHECKS
-        private AtomicSafetyHandle m_Safety;
-#endif
+        private readonly RequestsData<T>* _data;
 
         internal RequestWriter(in Requests<T> requests)
         {
-            buffer = requests.GetBuffer();
-
-#if ENABLE_UNITY_COLLECTIONS_CHECKS
-            AtomicSafetyHandle.CheckGetSecondaryDataPointerAndThrow(requests.m_Safety);
-            var ash = requests.m_Safety;
-            AtomicSafetyHandle.UseSecondaryVersion(ref ash);
-            m_Safety = ash;
-#endif
+            _data = requests.GetUnsafeData();
         }
 
+        /// <summary>
+        /// Writes a request into the current write buffer. The buffer will grow if necessary.
+        /// </summary>
+        /// <param name="value">Request data to write.</param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Write(in T value)
         {
-#if ENABLE_UNITY_COLLECTIONS_CHECKS
-            AtomicSafetyHandle.CheckWriteAndThrow(m_Safety);
-#endif
-            buffer->Write(value);
+            var writeBuffer = _data->GetWriteBuffer();
+            writeBuffer->Write(value);
         }
 
+        /// <summary>
+        /// Writes a request without checking capacity.
+        /// Ensure buffer capacity is sufficient before calling this method.
+        /// </summary>
+        /// <param name="value">Request data to write.</param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void WriteNoResize(in T value)
         {
+            var writeBuffer = _data->GetWriteBuffer();
+            writeBuffer->WriteNoResize(value);
+        }
+
+        /// <summary>
+        /// Returns a parallel writer that can be used to write requests from multiple threads.
+        /// The parallel writer captures the current write buffer at call time.
+        /// </summary>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public ParallelWriter AsParallelWriter()
+        {
+            return new ParallelWriter(_data->GetWriteBuffer());
+        }
+
+        /// <summary>
+        /// Provides parallel write access to requests.
+        /// Suitable for use in <see cref="Unity.Jobs.IJobParallelFor"/> and similar.
+        /// This writer is thread-safe and uses atomic operations internally.
+        /// </summary>
+        [NativeContainer]
+        [NativeContainerIsAtomicWriteOnly]
+        public unsafe struct ParallelWriter
+        {
+            private UnsafeList<T>.ParallelWriter _parallelWriter;
+
 #if ENABLE_UNITY_COLLECTIONS_CHECKS
-            AtomicSafetyHandle.CheckWriteAndThrow(m_Safety);
+            internal AtomicSafetyHandle m_Safety;
 #endif
-            buffer->WriteNoResize(value);
-        }
-    }
-}
 
-namespace ED.DOTS.EntitiesRequests.LowLevel.Unsafe
-{
-    public unsafe struct UnsafeRequestWriter<T> where T : unmanaged
-    {
-        [NativeDisableUnsafePtrRestriction]
-        private RequestsData<T>* buffer;
+            internal ParallelWriter(NativeRequestBuffer<T>* writeBuffer)
+            {
+                _parallelWriter = writeBuffer->_listPtr->AsParallelWriter();
 
-        internal UnsafeRequestWriter(in UnsafeRequests<T> requests)
-        {
-            buffer = requests.buffer;
-        }
+#if ENABLE_UNITY_COLLECTIONS_CHECKS
+                m_Safety = writeBuffer->m_Safety;
+                AtomicSafetyHandle.UseSecondaryVersion(ref m_Safety);
+                AtomicSafetyHandle.SetBumpSecondaryVersionOnScheduleWrite(m_Safety, true);
+#endif
+            }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void Write(in T value)
-        {
-            buffer->Write(value);
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void WriteNoResize(in T value)
-        {
-            buffer->WriteNoResize(value);
+            /// <summary>
+            /// Writes a request without checking capacity.
+            /// Ensure buffer capacity is sufficient before calling this method.
+            /// </summary>
+            /// <param name="value">Request data to write.</param>
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            public void WriteNoResize(in T value)
+            {
+#if ENABLE_UNITY_COLLECTIONS_CHECKS
+                AtomicSafetyHandle.CheckWriteAndThrow(m_Safety);
+#endif
+                _parallelWriter.AddNoResize(value);
+            }
         }
     }
 }
