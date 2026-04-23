@@ -1,9 +1,9 @@
 {
   "name": "com.ewigedreamer.dots.entitiesrequests",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "displayName": "ED Unity DOTS Entities Requests",
   "description": "Request system for Unity DOTS",
-  "unity": "6000.3",
+  "unity": "6000.0",
   "dependencies": {
     "com.unity.entities": "1.4.5",
     "com.unity.collections": "2.6.5",
@@ -19,5 +19,17 @@
     "name": "Pavel Sborshchikov",
     "url": "https://github.com/EwigeDreamer",
     "email": "ewigedreamer@gmail.com"
-  }
+  },
+  "samples": [
+    {
+      "displayName": "Package Unit Tests",
+      "description": "Contains unit tests for the package. After import, the tests should appear automatically in the Test Runner.",
+      "path": "Tests~"
+    },
+    {
+      "displayName": "Basic, Advanced and Manual Examples",
+      "description": "Contains three examples demonstrating usage of EntitiesRequests: basic system, advanced parallel job, and manual container control.",
+      "path": "Samples~"
+    }
+  ]
 }
