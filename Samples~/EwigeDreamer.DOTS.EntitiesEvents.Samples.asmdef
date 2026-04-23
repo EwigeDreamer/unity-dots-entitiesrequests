@@ -1,0 +1,19 @@
+{
+    "name": "EwigeDreamer.DOTS.EntitiesRequests.Samples",
+    "rootNamespace": "ED.DOTS.EntitiesRequests.Samples",
+    "references": [
+        "Unity.Entities",
+        "Unity.Collections",
+        "Unity.Burst",
+        "EwigeDreamer.DOTS.EntitiesRequests"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
