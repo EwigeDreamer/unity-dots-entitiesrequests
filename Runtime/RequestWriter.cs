@@ -19,7 +19,7 @@ namespace ED.DOTS.EntitiesRequests
 
         internal RequestWriter(in Requests<T> requests)
         {
-            _data = requests.GetUnsafeData();
+            _data = requests._data;
         }
 
         /// <summary>
