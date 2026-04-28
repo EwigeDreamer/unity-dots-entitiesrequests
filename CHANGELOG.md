@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-04-29
+
+### Added
+- Each `RequestWriter` now owns a dedicated private buffer, eliminating write conflicts between systems.
+- `RequestWriter<T>.Dispose()` to free the buffer; `GetRequestWriter` now requires an explicit `initialCapacity`.
+
+### Changed
+- Internal redesign: multiple writer buffers aggregated into a single read buffer, removing the need for `EnsureRequestBufferCapacity`.
+- Mixed synchronous and parallel writes are now fully supported (each system writes to its own buffer).
+
+### Removed
+- `EnsureRequestBufferCapacity` extension methods (obsolete).
+- Previous limitation that caused exceptions when mixing write modes.
+
 ## [1.0.1] - 2026-04-28
 
 ### Added
