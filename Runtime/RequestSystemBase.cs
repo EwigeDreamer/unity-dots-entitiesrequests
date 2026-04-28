@@ -5,8 +5,9 @@ namespace ED.DOTS.EntitiesRequests
 {
     /// <summary>
     /// Base system for managing requests of type <typeparamref name="T"/>.
-    /// Updates the request container each frame, moving pending writes to the read buffer.
-    /// Does not automatically clear the read buffer; this must be done by the consuming system.
+    /// Updates the request container each frame, moving pending writes from all registered writer buffers
+    /// into the shared read buffer. Does not automatically clear the read buffer; this must be done
+    /// by the consuming system via RequestReader&lt;T&gt;.Clear().
     /// </summary>
     /// <typeparam name="T">Unmanaged request type.</typeparam>
     [BurstCompile]
@@ -29,7 +30,7 @@ namespace ED.DOTS.EntitiesRequests
             // Requesting a read-only ComponentTypeHandle informs the scheduler that this system will read the singleton.
             // Combined with the write declaration in the writer systems, this creates a proper dependency chain:
             // all writer systems' jobs will complete before this system's OnUpdate runs.
-            // This ensures that when we call Requests.Update() and clear the write buffer, no pending write jobs are still using it.
+            // This ensures that when we call Requests.Update() and clear the write buffers, no pending write jobs are still using them.
             // The handle is not stored because we only need the dependency registration side effect.
             GetComponentTypeHandle<RequestSingleton<T>>(true);
             

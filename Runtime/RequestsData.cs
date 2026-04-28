@@ -5,26 +5,27 @@ using Unity.Collections.LowLevel.Unsafe;
 namespace ED.DOTS.EntitiesRequests
 {
     /// <summary>
-    /// Manages double-buffered request storage for type <typeparamref name="T"/> with fixed roles:
-    /// - writeBuffer: always for writing new requests (via RequestWriter)
-    /// - readBuffer: always for reading (via RequestReader)
-    /// Update() moves all items from writeBuffer to readBuffer, then clears writeBuffer.
+    /// Manages multiple writer buffers and a single read buffer for request type <typeparamref name="T"/>.
+    /// - Each writer buffer is created and registered by a RequestWriter instance.
+    /// - Update() copies all pending requests from every registered writer buffer into the read buffer,
+    ///   then clears each writer buffer.
     /// </summary>
     /// <typeparam name="T">Unmanaged request type.</typeparam>
     public unsafe struct RequestsData<T> : IDisposable where T : unmanaged
     {
-        [NativeDisableUnsafePtrRestriction]
-        private NativeRequestBuffer<T>* _writeBuffer;
+        // List of pointers to writer buffers (each owned by a RequestWriter)
+        private UnsafeList<IntPtr> _writeBufferPtrs;
 
+        // Single read buffer (owned by RequestsData)
         [NativeDisableUnsafePtrRestriction]
         private NativeRequestBuffer<T>* _readBuffer;
 
         private readonly Allocator _allocator;
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="RequestsData{T}"/> struct with the specified capacity and allocator.
+        /// Initializes a new instance of the <see cref="RequestsData{T}"/> struct.
         /// </summary>
-        /// <param name="initialCapacity">Initial capacity for both internal buffers.</param>
+        /// <param name="initialCapacity">Initial capacity for the read buffer and for the list of writer pointers.</param>
         /// <param name="allocator">Allocator to use for all internal allocations.</param>
         public RequestsData(int initialCapacity, Allocator allocator)
         {
@@ -37,15 +38,12 @@ namespace ED.DOTS.EntitiesRequests
 
             _allocator = allocator;
 
-            // Allocate and initialize write buffer
-            var size = UnsafeUtility.SizeOf<NativeRequestBuffer<T>>();
-            var alignment = UnsafeUtility.AlignOf<NativeRequestBuffer<T>>();
-            _writeBuffer = (NativeRequestBuffer<T>*)UnsafeUtility.MallocTracked(size, alignment, allocator, 1);
-            UnsafeUtility.MemClear(_writeBuffer, size);
-            var tempWrite = new NativeRequestBuffer<T>(initialCapacity, allocator);
-            UnsafeUtility.CopyStructureToPtr(ref tempWrite, _writeBuffer);
+            // Initialize list of writer buffer pointers (stores IntPtr to NativeRequestBuffer<T>*)
+            _writeBufferPtrs = new UnsafeList<IntPtr>(4, allocator);
 
             // Allocate and initialize read buffer
+            var size = UnsafeUtility.SizeOf<NativeRequestBuffer<T>>();
+            var alignment = UnsafeUtility.AlignOf<NativeRequestBuffer<T>>();
             _readBuffer = (NativeRequestBuffer<T>*)UnsafeUtility.MallocTracked(size, alignment, allocator, 1);
             UnsafeUtility.MemClear(_readBuffer, size);
             var tempRead = new NativeRequestBuffer<T>(initialCapacity, allocator);
@@ -53,22 +51,56 @@ namespace ED.DOTS.EntitiesRequests
         }
 
         /// <summary>
-        /// Moves all pending writes to the read buffer and clears the write buffer.
+        /// Registers a writer buffer (pointer) so that its contents will be copied during Update.
+        /// </summary>
+        /// <param name="bufferPtr">Pointer to the writer buffer to register.</param>
+        public void RegisterWriteBuffer(NativeRequestBuffer<T>* bufferPtr)
+        {
+            _writeBufferPtrs.Add((IntPtr)bufferPtr);
+        }
+
+        /// <summary>
+        /// Unregisters a writer buffer. The buffer itself is not disposed here – the caller owns it.
+        /// </summary>
+        /// <param name="bufferPtr">Pointer to the writer buffer to unregister.</param>
+        public void UnregisterWriteBuffer(NativeRequestBuffer<T>* bufferPtr)
+        {
+            for (int i = _writeBufferPtrs.Length - 1; i >= 0; i--)
+            {
+                if (_writeBufferPtrs[i] == (IntPtr)bufferPtr)
+                {
+                    _writeBufferPtrs.RemoveAt(i);
+                    break;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Copies all pending requests from every registered writer buffer into the read buffer,
+        /// then clears each writer buffer.
         /// Called automatically by RequestSystemBase&lt;T&gt; every frame.
         /// </summary>
         public void Update()
         {
-            var writeLen = _writeBuffer->_listPtr->Length;
-            if (writeLen > 0)
+            // Iterate over all registered writer buffers
+            for (int i = 0; i < _writeBufferPtrs.Length; i++)
             {
-                _readBuffer->EnsureCapacity(_readBuffer->_listPtr->Length + writeLen);
-                _readBuffer->_listPtr->AddRange(*_writeBuffer->_listPtr);
+                var writerBuffer = (NativeRequestBuffer<T>*)_writeBufferPtrs[i];
+                int writeLen = writerBuffer->_listPtr->Length;
+                if (writeLen > 0)
+                {
+                    // Ensure read buffer has enough capacity
+                    _readBuffer->EnsureCapacity(_readBuffer->_listPtr->Length + writeLen);
+                    // Append all elements from writer buffer to read buffer
+                    _readBuffer->_listPtr->AddRange(*writerBuffer->_listPtr);
+                    // Clear the writer buffer (keep capacity)
+                    writerBuffer->Clear();
+                }
             }
-            _writeBuffer->Clear();
         }
 
         /// <summary>
-        /// Clears the read buffer. Called explicitly by RequestReader&lt;T&gt;.
+        /// Clears the read buffer. Called explicitly by RequestReader&lt;T&gt; after processing.
         /// </summary>
         public void ClearReadBuffer()
         {
@@ -76,15 +108,7 @@ namespace ED.DOTS.EntitiesRequests
         }
 
         /// <summary>
-        /// Returns a reference to the buffer currently designated for writing.
-        /// </summary>
-        public NativeRequestBuffer<T>* GetWriteBuffer()
-        {
-            return _writeBuffer;
-        }
-
-        /// <summary>
-        /// Returns a reference to the buffer currently designated for reading.
+        /// Returns a pointer to the read buffer.
         /// </summary>
         public NativeRequestBuffer<T>* GetReadBuffer()
         {
@@ -92,33 +116,20 @@ namespace ED.DOTS.EntitiesRequests
         }
 
         /// <summary>
-        /// Ensures that both internal buffers have at least the specified capacity.
-        /// </summary>
-        /// <param name="capacity">Minimum capacity required.</param>
-        public void EnsureCapacity(int capacity)
-        {
-            _writeBuffer->EnsureCapacity(capacity);
-            _readBuffer->EnsureCapacity(capacity);
-        }
-
-        /// <summary>
-        /// Disposes both internal buffers and frees allocated memory.
+        /// Disposes the read buffer and the list of writer pointers.
+        /// Does not dispose individual writer buffers – they are owned by RequestWriter instances.
         /// </summary>
         public void Dispose()
         {
-            if (_writeBuffer != null)
-            {
-                _writeBuffer->Dispose();
-                UnsafeUtility.FreeTracked(_writeBuffer, _allocator);
-                _writeBuffer = null;
-            }
-
             if (_readBuffer != null)
             {
                 _readBuffer->Dispose();
                 UnsafeUtility.FreeTracked(_readBuffer, _allocator);
                 _readBuffer = null;
             }
+
+            if (_writeBufferPtrs.IsCreated)
+                _writeBufferPtrs.Dispose();
         }
     }
 }

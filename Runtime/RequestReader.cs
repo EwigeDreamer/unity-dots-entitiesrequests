@@ -8,7 +8,7 @@ namespace ED.DOTS.EntitiesRequests
 {
     /// <summary>
     /// Provides read access to requests of type <typeparamref name="T"/>.
-    /// Can be safely cached across frames; always reads from the read buffer.
+    /// Can be safely cached across frames; always reads from the shared read buffer.
     /// Must call <see cref="Clear"/> after processing to remove requests from the read buffer.
     /// </summary>
     /// <typeparam name="T">Unmanaged request type.</typeparam>
@@ -43,14 +43,14 @@ namespace ED.DOTS.EntitiesRequests
         /// Clears all requests from the read buffer. Must be called explicitly after processing.
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-public void Clear()
-{
-    var readBuffer = _data->GetReadBuffer();
+        public void Clear()
+        {
+            var readBuffer = _data->GetReadBuffer();
 #if ENABLE_UNITY_COLLECTIONS_CHECKS
-    AtomicSafetyHandle.CheckWriteAndThrow(readBuffer->m_Safety);
+            AtomicSafetyHandle.CheckWriteAndThrow(readBuffer->m_Safety);
 #endif
-    readBuffer->Clear();
-}
+            readBuffer->Clear();
+        }
 
         /// <summary>
         /// Iterator struct that enables enumeration over requests in the read buffer.

@@ -7,7 +7,7 @@ using Unity.Collections.LowLevel.Unsafe;
 namespace ED.DOTS.EntitiesRequests
 {
     /// <summary>
-    /// A thread-safe native container for request buffers with fixed roles.
+    /// A thread-safe native container for request buffers with multiple writer buffers and a single reader buffer.
     /// Provides <see cref="RequestWriter{T}"/> and <see cref="RequestReader{T}"/> for inter-system request messaging.
     /// </summary>
     /// <typeparam name="T">Unmanaged request type.</typeparam>
@@ -23,7 +23,7 @@ namespace ED.DOTS.EntitiesRequests
         /// <summary>
         /// Initializes a new instance of the <see cref="Requests{T}"/> struct.
         /// </summary>
-        /// <param name="initialCapacity">Initial capacity of internal request buffers.</param>
+        /// <param name="initialCapacity">Initial capacity of the read buffer and the writer list.</param>
         /// <param name="allocator">Allocator to use for all internal allocations.</param>
         public Requests(int initialCapacity, Allocator allocator)
         {
@@ -55,9 +55,9 @@ namespace ED.DOTS.EntitiesRequests
         }
 
         /// <summary>
-        /// Updates the internal buffers: moves all pending writes to the read buffer and clears the write buffer.
-        /// Call this once per frame to make written requests available for reading.
-        /// Normally called automatically by RequestSystemBase&lt;T&gt;.
+        /// Updates the internal buffers: copies all pending writes from every registered writer buffer
+        /// into the read buffer, then clears each writer buffer.
+        /// Called automatically by RequestSystemBase&lt;T&gt;.
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Update()
@@ -77,17 +77,18 @@ namespace ED.DOTS.EntitiesRequests
         }
 
         /// <summary>
-        /// Returns a writer for publishing requests.
+        /// Returns a new writer with its own dedicated buffer. The writer must be disposed by the caller.
         /// </summary>
+        /// <param name="initialCapacity">Initial capacity of the writer's private buffer.</param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public RequestWriter<T> GetWriter()
+        public RequestWriter<T> GetWriter(int initialCapacity)
         {
             CheckData();
-            return new RequestWriter<T>(this);
+            return new RequestWriter<T>(this, initialCapacity, _allocator);
         }
 
         /// <summary>
-        /// Returns a reader for consuming published requests.
+        /// Returns a reader for consuming published requests (reads from the shared read buffer).
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public RequestReader<T> GetReader()
@@ -97,17 +98,8 @@ namespace ED.DOTS.EntitiesRequests
         }
 
         /// <summary>
-        /// Ensures that both internal buffers have at least the specified capacity.
-        /// </summary>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void EnsureCapacity(int capacity)
-        {
-            CheckData();
-            _data->EnsureCapacity(capacity);
-        }
-
-        /// <summary>
-        /// Releases all resources held by this container.
+        /// Releases all resources held by this container (read buffer and writer list).
+        /// Does not dispose individual writer buffers – they must be disposed by their owners before calling this.
         /// </summary>
         public void Dispose()
         {
