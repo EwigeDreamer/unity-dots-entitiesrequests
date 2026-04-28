@@ -54,7 +54,7 @@ namespace ED.DOTS.EntitiesRequests.Tests
         {
             const int requestCount = 500;
             var requests = new Requests<DataIntegrityRequest>(requestCount, Allocator.Persistent);
-            var writer = requests.GetWriter();
+            var writer = requests.GetWriter(requestCount);
 
             for (int i = 0; i < requestCount; i++)
             {
@@ -73,6 +73,7 @@ namespace ED.DOTS.EntitiesRequests.Tests
                 Assert.IsTrue(received.Contains(i), $"Missing value {i}");
 
             reader.Clear();
+            writer.Dispose();
             requests.Dispose();
         }
 
@@ -81,9 +82,9 @@ namespace ED.DOTS.EntitiesRequests.Tests
         {
             const int requestCount = 1000;
             var requests = new Requests<DataIntegrityRequest>(requestCount, Allocator.Persistent);
-            requests.EnsureCapacity(requestCount);
+            var writer = requests.GetWriter(requestCount);
+            writer.EnsureCapacity(requestCount);
 
-            var writer = requests.GetWriter();
             var parallelWriter = writer.AsParallelWriter();
 
             var job = new ParallelWriteJob { Writer = parallelWriter };
@@ -102,6 +103,7 @@ namespace ED.DOTS.EntitiesRequests.Tests
                 Assert.IsTrue(received.Contains(i), $"Missing value {i}");
 
             reader.Clear();
+            writer.Dispose();
             requests.Dispose();
         }
 
@@ -112,9 +114,9 @@ namespace ED.DOTS.EntitiesRequests.Tests
             const int batchSize = 64;
 
             var requests = new Requests<DataIntegrityRequest>(totalCount, Allocator.Persistent);
-            requests.EnsureCapacity(totalCount);
+            var writer = requests.GetWriter(totalCount);
+            writer.EnsureCapacity(totalCount);
 
-            var writer = requests.GetWriter();
             var parallelWriter = writer.AsParallelWriter();
 
             var job = new ParallelForBatchWriteJob { Writer = parallelWriter };
@@ -133,6 +135,7 @@ namespace ED.DOTS.EntitiesRequests.Tests
                 Assert.IsTrue(received.Contains(i), $"Missing value {i}");
 
             reader.Clear();
+            writer.Dispose();
             requests.Dispose();
         }
 
@@ -144,8 +147,12 @@ namespace ED.DOTS.EntitiesRequests.Tests
 
             protected override void OnCreate()
             {
-                _writer = this.GetRequestWriter<DataIntegrityRequest>();
-                EntityManager.EnsureRequestBufferCapacity<DataIntegrityRequest>(RequestCount);
+                _writer = this.GetRequestWriter<DataIntegrityRequest>(RequestCount);
+            }
+
+            protected override void OnDestroy()
+            {
+                _writer.Dispose();
             }
 
             protected override void OnUpdate()

@@ -41,10 +41,7 @@ namespace ED.DOTS.EntitiesRequests.Tests
             const int requestCount = 1000;
 
             var requests = new Requests<ParallelTestRequest>(requestCount, Allocator.Persistent);
-            var writer = requests.GetWriter();
-
-            // Ensure capacity for parallel writes without resize
-            requests.EnsureCapacity(requestCount);
+            var writer = requests.GetWriter(requestCount);
 
             var parallelWriter = writer.AsParallelWriter();
 
@@ -56,7 +53,6 @@ namespace ED.DOTS.EntitiesRequests.Tests
             var handle = job.Schedule(requestCount, 64);
             handle.Complete();
 
-            // After writing, call Update to move writes to read buffer
             requests.Update();
 
             var reader = requests.GetReader();
@@ -67,6 +63,7 @@ namespace ED.DOTS.EntitiesRequests.Tests
             }
 
             Assert.AreEqual(requestCount, count);
+            writer.Dispose();
             requests.Dispose();
         }
 
@@ -75,18 +72,15 @@ namespace ED.DOTS.EntitiesRequests.Tests
         {
             const int requestCount = 100;
             var requests = new Requests<ParallelTestRequest>(requestCount, Allocator.Persistent);
-            requests.EnsureCapacity(requestCount);
+            var writer = requests.GetWriter(requestCount);
 
-            var writer = requests.GetWriter();
             var parallelWriter = writer.AsParallelWriter();
 
-            // Schedule parallel write job
             var job = new ParallelWriteJob { Writer = parallelWriter, BaseValue = 0 };
             var handle = job.Schedule(requestCount, 64);
 
             var reader = requests.GetReader();
 
-            // Reading while write job is running should not throw (different buffers)
             Assert.DoesNotThrow(() =>
             {
                 int count = 0;
@@ -94,11 +88,11 @@ namespace ED.DOTS.EntitiesRequests.Tests
                 {
                     count++;
                 }
-                // Read buffer is empty because Update hasn't been called
                 Assert.AreEqual(0, count);
             });
 
             handle.Complete();
+            writer.Dispose();
             requests.Dispose();
         }
 
@@ -108,13 +102,9 @@ namespace ED.DOTS.EntitiesRequests.Tests
             var writerSystem = GetOrAddSystemToSimulationManaged<ParallelWriterTestSystem>();
             var readerSystem = GetOrAddSystemToSimulationManaged<ParallelReaderTestSystem>();
 
-            // First frame: writer schedules job and writes requests
             UpdateWorld(1);
-            // Events not yet available for reading (Update hasn't been called? Actually RequestSystemBase updates after CompleteDependency)
-            // In our test, RequestSystemGroup updates at end of frame, so after first frame reader sees nothing.
             Assert.AreEqual(0, readerSystem.ReceivedCount);
 
-            // Second frame: reader should see the requests written in first frame
             UpdateWorld(1);
             Assert.AreEqual(ParallelWriterTestSystem.RequestCount, readerSystem.ReceivedCount);
         }
@@ -129,8 +119,12 @@ namespace ED.DOTS.EntitiesRequests.Tests
 
             protected override void OnCreate()
             {
-                _writer = this.GetRequestWriter<ParallelTestRequest>();
-                EntityManager.EnsureRequestBufferCapacity<ParallelTestRequest>(RequestCount);
+                _writer = this.GetRequestWriter<ParallelTestRequest>(RequestCount);
+            }
+
+            protected override void OnDestroy()
+            {
+                _writer.Dispose();
             }
 
             protected override void OnUpdate()

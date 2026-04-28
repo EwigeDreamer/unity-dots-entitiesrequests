@@ -1,7 +1,9 @@
+using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
 using Unity.Entities;
 using Unity.Collections;
+using UnityEngine.Pool;
 
 namespace ED.DOTS.EntitiesRequests.Tests
 {
@@ -94,6 +96,14 @@ namespace ED.DOTS.EntitiesRequests.Tests
             return newSystem;
         }
 
+        protected void AddExistingSystemToSimulationManaged<T>(T newSystem) where T : SystemBase
+        {
+            if (newSystem == null) return;
+            World.AddSystemManaged(newSystem);
+            World.GetOrCreateSystemManaged<SimulationSystemGroup>().AddSystemToUpdateList(newSystem);
+            World.GetOrCreateSystemManaged<SimulationSystemGroup>().SortSystems();
+        }
+
         protected ref T GetOrAddSystemToSimulation<T>() where T : unmanaged, ISystem
         {
             var desiredTypeIndex = TypeManager.GetSystemTypeIndex<T>();
@@ -108,6 +118,26 @@ namespace ED.DOTS.EntitiesRequests.Tests
             World.GetOrCreateSystemManaged<SimulationSystemGroup>().AddSystemToUpdateList(newHandle);
             World.GetOrCreateSystemManaged<SimulationSystemGroup>().SortSystems();
             return ref World.Unmanaged.GetUnsafeSystemRef<T>(newHandle);
+        }
+
+        protected void DestroySystemManaged<T>() where T : SystemBase
+        {
+            var target = World.GetExistingSystemManaged<T>();
+            if (target == null) return;
+            
+            foreach (var system in World.Systems)
+            {
+                if (system is ComponentSystemGroup group)
+                {
+                    if (group.ManagedSystems.Contains(target))
+                    {
+                        group.RemoveSystemFromUpdateList(target);
+                        group.SortSystems();
+                    }
+                }
+            }
+            
+            World.DestroySystemManaged(target);
         }
     }
 }

@@ -32,8 +32,12 @@ namespace ED.DOTS.EntitiesRequests.Tests
 
             protected override void OnCreate()
             {
-                _writer = this.GetRequestWriter<RaceTestRequest>();
-                this.EnsureRequestBufferCapacity<RaceTestRequest>(RequestCount);
+                _writer = this.GetRequestWriter<RaceTestRequest>(RequestCount);
+            }
+
+            protected override void OnDestroy()
+            {
+                _writer.Dispose();
             }
 
             protected override void OnUpdate()
@@ -60,8 +64,12 @@ namespace ED.DOTS.EntitiesRequests.Tests
 
             protected override void OnCreate()
             {
-                _writer = this.GetRequestWriter<RaceTestRequest>();
-                this.EnsureRequestBufferCapacity<RaceTestRequest>(RequestCount);
+                _writer = this.GetRequestWriter<RaceTestRequest>(RequestCount);
+            }
+
+            protected override void OnDestroy()
+            {
+                _writer.Dispose();
             }
 
             protected override void OnUpdate()
@@ -81,19 +89,26 @@ namespace ED.DOTS.EntitiesRequests.Tests
 
         // System that writes synchronously (without a job)
         [DisableAutoCreation]
-        [UpdateAfter(typeof(ParallelWriterSystem))]
         public partial class SingleWriterSystem : SystemBase
         {
             private RequestWriter<RaceTestRequest> _writer;
 
-            protected override void OnCreate() => _writer = this.GetRequestWriter<RaceTestRequest>();
+            protected override void OnCreate()
+            {
+                _writer = this.GetRequestWriter<RaceTestRequest>();
+            }
+
+            protected override void OnDestroy()
+            {
+                _writer.Dispose();
+            }
 
             protected override void OnUpdate()
             {
                 _writer.Write(new RaceTestRequest { Value = -1 });
             }
         }
-        
+
         // Reader system to consume and clear requests, preventing buffer accumulation
         [DisableAutoCreation]
         public partial class RaceTestRequestReaderSystem : SystemBase
@@ -112,20 +127,14 @@ namespace ED.DOTS.EntitiesRequests.Tests
             }
         }
 
-        // This test demonstrates mixed sync and parallel writing.
-        // It is expected to throw InvalidOperationException because the synchronous write
-        // requests exclusive access while a parallel job is still running.
-        // Keeping this test as commented documentation of the intended limitation.
-        // Uncomment to verify the exception behavior.
-        // [Test]
-        public void MixedSyncAndParallelWritingToSameBuffer_ThrowsInvalidOperationException()
+        [Test]
+        public void MixedSyncAndParallelWritingToSameBuffer_Works()
         {
             var parallelSystem = GetOrAddSystemToSimulationManaged<ParallelWriterSystem>();
             var singleSystem = GetOrAddSystemToSimulationManaged<SingleWriterSystem>();
             var readerSystem = GetOrAddSystemToSimulationManaged<RaceTestRequestReaderSystem>();
 
             UpdateWorld(10);
-
             CompleteJobs();
         }
 
@@ -137,7 +146,6 @@ namespace ED.DOTS.EntitiesRequests.Tests
             var readerSystem = GetOrAddSystemToSimulationManaged<RaceTestRequestReaderSystem>();
 
             UpdateWorld(10);
-
             CompleteJobs();
         }
     }

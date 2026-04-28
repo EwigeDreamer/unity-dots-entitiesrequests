@@ -19,9 +19,9 @@ namespace ED.DOTS.EntitiesRequests.Tests
             GetOrAddRequestSystem<IntegrationTestRequest_RequestSystem>();
         }
 
-        // --- Тестовые системы ---
+        // --- Test systems ---
 
-        // ISystem вариант писателя
+        // ISystem writer
         [DisableAutoCreation]
         public partial struct WriterISystem : ISystem
         {
@@ -32,13 +32,18 @@ namespace ED.DOTS.EntitiesRequests.Tests
                 _writer = state.GetRequestWriter<IntegrationTestRequest>();
             }
 
+            public void OnDestroy(ref SystemState state)
+            {
+                _writer.Dispose();
+            }
+
             public void OnUpdate(ref SystemState state)
             {
                 _writer.Write(new IntegrationTestRequest { Value = 1 });
             }
         }
 
-        // SystemBase вариант писателя
+        // SystemBase writer
         [DisableAutoCreation]
         public partial class WriterSystemBase : SystemBase
         {
@@ -49,13 +54,18 @@ namespace ED.DOTS.EntitiesRequests.Tests
                 _writer = this.GetRequestWriter<IntegrationTestRequest>();
             }
 
+            protected override void OnDestroy()
+            {
+                _writer.Dispose();
+            }
+
             protected override void OnUpdate()
             {
                 _writer.Write(new IntegrationTestRequest { Value = 2 });
             }
         }
 
-        // ISystem читатель
+        // ISystem reader
         [DisableAutoCreation]
         public partial struct ReaderISystem : ISystem
         {
@@ -74,12 +84,11 @@ namespace ED.DOTS.EntitiesRequests.Tests
                 {
                     ReceivedCount++;
                 }
-                // После чтения очищаем буфер
                 _reader.Clear();
             }
         }
 
-        // SystemBase читатель
+        // SystemBase reader
         [DisableAutoCreation]
         public partial class ReaderSystemBase : SystemBase
         {
@@ -102,7 +111,7 @@ namespace ED.DOTS.EntitiesRequests.Tests
             }
         }
 
-        // --- Тесты ---
+        // --- Tests ---
 
         [Test]
         public void GetWriter_FromSystemState_CreatesSingletonAndReturnsValidWriter()
@@ -110,10 +119,11 @@ namespace ED.DOTS.EntitiesRequests.Tests
             var query = EntityManager.CreateEntityQuery(typeof(RequestSingleton<IntegrationTestRequest>));
             Assert.IsFalse(query.TryGetSingleton<RequestSingleton<IntegrationTestRequest>>(out _));
 
-            var writer = EntityManager.GetRequestWriter<IntegrationTestRequest>();
+            var writer = EntityManager.GetRequestWriter<IntegrationTestRequest>(64);
             writer.Write(new IntegrationTestRequest { Value = 0 });
 
             Assert.IsTrue(query.TryGetSingleton<RequestSingleton<IntegrationTestRequest>>(out _));
+            writer.Dispose();
         }
 
         [Test]
@@ -122,12 +132,9 @@ namespace ED.DOTS.EntitiesRequests.Tests
             ref var writer = ref GetOrAddSystemToSimulation<WriterISystem>();
             ref var reader = ref GetOrAddSystemToSimulation<ReaderISystem>();
 
-            // Первый кадр: запись
             UpdateWorld(1);
-            // В первом кадре reader ещё не видит запрос, потому что Update ещё не переместил write в read
             Assert.AreEqual(0, reader.ReceivedCount);
 
-            // Второй кадр: writer снова пишет, reader должен увидеть запрос из первого кадра
             UpdateWorld(1);
             Assert.AreEqual(1, reader.ReceivedCount);
         }
@@ -146,20 +153,6 @@ namespace ED.DOTS.EntitiesRequests.Tests
         }
 
         [Test]
-        public unsafe void EnsureRequestBufferCapacity_FromSystemState_Works()
-        {
-            var capacity = 1024;
-            EntityManager.EnsureRequestBufferCapacity<IntegrationTestRequest>(capacity);
-            var singleton = EntitiesRequestsHelper.GetOrCreateSingleton<IntegrationTestRequest>(EntityManager);
-            var writer = singleton.Requests.GetWriter();
-            for (int i = 0; i < capacity; i++)
-            {
-                writer.WriteNoResize(new IntegrationTestRequest { Value = i });
-            }
-            // Если дошли сюда без исключений — ёмкости хватило.
-        }
-
-        [Test]
         public void GetWriter_FromEntityManager_ReturnsSameWriter()
         {
             var writer1 = EntityManager.GetRequestWriter<IntegrationTestRequest>();
@@ -168,11 +161,9 @@ namespace ED.DOTS.EntitiesRequests.Tests
             writer2.Write(new IntegrationTestRequest { Value = 6 });
 
             var reader = EntityManager.GetRequestReader<IntegrationTestRequest>();
-            // Пока Update не вызван, reader не должен видеть запросы
             using var enumerator = reader.Read().GetEnumerator();
             Assert.IsFalse(enumerator.MoveNext());
 
-            // Вызовем Update вручную
             var singleton = EntitiesRequestsHelper.GetOrCreateSingleton<IntegrationTestRequest>(EntityManager);
             singleton.Requests.Update();
 
@@ -181,9 +172,10 @@ namespace ED.DOTS.EntitiesRequests.Tests
             foreach (var req in readerAfter.Read())
                 count++;
             Assert.AreEqual(2, count);
-            
-            // Очищаем, чтобы не влиять на другие тесты
+
             readerAfter.Clear();
+            writer1.Dispose();
+            writer2.Dispose();
         }
     }
 }

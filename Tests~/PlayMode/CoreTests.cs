@@ -28,13 +28,14 @@ namespace ED.DOTS.EntitiesRequests.Tests
         public void WriteAndRead_SameFrame_ReadsNothing()
         {
             var requests = new Requests<TestRequest>(16, Allocator.Persistent);
-            var writer = requests.GetWriter();
+            var writer = requests.GetWriter(64);
             writer.Write(new TestRequest { Value = 42 });
 
             var reader = requests.GetReader();
             using var enumerator = reader.Read().GetEnumerator();
             Assert.IsFalse(enumerator.MoveNext());
 
+            writer.Dispose();
             requests.Dispose();
         }
 
@@ -42,8 +43,7 @@ namespace ED.DOTS.EntitiesRequests.Tests
         public void WriteThenUpdate_ThenRead_ReturnsRequests()
         {
             var requests = new Requests<TestRequest>(16, Allocator.Persistent);
-
-            var writer = requests.GetWriter();
+            var writer = requests.GetWriter(64);
             writer.Write(new TestRequest { Value = 1 });
             writer.Write(new TestRequest { Value = 2 });
 
@@ -58,6 +58,7 @@ namespace ED.DOTS.EntitiesRequests.Tests
             Assert.AreEqual(2, enumerator.Current.Value);
             Assert.IsFalse(enumerator.MoveNext());
 
+            writer.Dispose();
             requests.Dispose();
         }
 
@@ -65,8 +66,7 @@ namespace ED.DOTS.EntitiesRequests.Tests
         public void MultipleWrites_ReadAll_InOrder()
         {
             var requests = new Requests<TestRequest>(16, Allocator.Persistent);
-
-            var writer = requests.GetWriter();
+            var writer = requests.GetWriter(100);
             for (int i = 0; i < 100; i++)
             {
                 writer.Write(new TestRequest { Value = i });
@@ -85,6 +85,7 @@ namespace ED.DOTS.EntitiesRequests.Tests
             }
             Assert.AreEqual(100, expected);
 
+            writer.Dispose();
             requests.Dispose();
         }
 
@@ -94,20 +95,17 @@ namespace ED.DOTS.EntitiesRequests.Tests
             var requests = new Requests<TestRequest>(16, Allocator.Persistent);
             var reader = requests.GetReader();
 
-            // Initially read buffer empty
             using (var enumerator = reader.Read().GetEnumerator())
                 Assert.IsFalse(enumerator.MoveNext());
 
-            var writer = requests.GetWriter();
+            var writer = requests.GetWriter(64);
             writer.Write(new TestRequest { Value = 123 });
 
-            // Still empty because Update not called
             using (var enumerator = reader.Read().GetEnumerator())
                 Assert.IsFalse(enumerator.MoveNext());
 
             requests.Update();
 
-            // Now read buffer contains the request
             using (var enumerator = reader.Read().GetEnumerator())
             {
                 Assert.IsTrue(enumerator.MoveNext());
@@ -115,10 +113,8 @@ namespace ED.DOTS.EntitiesRequests.Tests
                 Assert.IsFalse(enumerator.MoveNext());
             }
 
-            // Write another request after Update
             writer.Write(new TestRequest { Value = 456 });
 
-            // Read buffer still has old request (not cleared yet)
             using (var enumerator = reader.Read().GetEnumerator())
             {
                 Assert.IsTrue(enumerator.MoveNext());
@@ -128,9 +124,6 @@ namespace ED.DOTS.EntitiesRequests.Tests
 
             requests.Update();
 
-            // Actually correct behavior: read buffer accumulates all requests from all previous Updates until Clear is called.
-            // Let's adjust test to reflect that: After second Update, read buffer should have 123 and 456.
-            // Then after Clear, it should be empty.
             using (var enumerator = reader.Read().GetEnumerator())
             {
                 Assert.IsTrue(enumerator.MoveNext());
@@ -140,12 +133,12 @@ namespace ED.DOTS.EntitiesRequests.Tests
                 Assert.IsFalse(enumerator.MoveNext());
             }
 
-            // Clear the read buffer
             reader.Clear();
 
             using (var enumerator = reader.Read().GetEnumerator())
                 Assert.IsFalse(enumerator.MoveNext());
 
+            writer.Dispose();
             requests.Dispose();
         }
 
@@ -153,16 +146,12 @@ namespace ED.DOTS.EntitiesRequests.Tests
         public void CachedWriterAndReader_WorkAcrossUpdates()
         {
             var requests = new Requests<TestRequest>(16, Allocator.Persistent);
-
-            // Cache writer and reader
-            var writer = requests.GetWriter();
+            var writer = requests.GetWriter(64);
             var reader = requests.GetReader();
 
-            // First frame: write
             writer.Write(new TestRequest { Value = 100 });
             requests.Update();
 
-            // Read should return the request
             using (var enumerator = reader.Read().GetEnumerator())
             {
                 Assert.IsTrue(enumerator.MoveNext());
@@ -170,11 +159,9 @@ namespace ED.DOTS.EntitiesRequests.Tests
                 Assert.IsFalse(enumerator.MoveNext());
             }
 
-            // Second frame: write again
             writer.Write(new TestRequest { Value = 200 });
             requests.Update();
 
-            // Now read buffer contains both (since we haven't cleared)
             using (var enumerator = reader.Read().GetEnumerator())
             {
                 Assert.IsTrue(enumerator.MoveNext());
@@ -184,11 +171,11 @@ namespace ED.DOTS.EntitiesRequests.Tests
                 Assert.IsFalse(enumerator.MoveNext());
             }
 
-            // Clear and verify
             reader.Clear();
             using (var enumerator = reader.Read().GetEnumerator())
                 Assert.IsFalse(enumerator.MoveNext());
 
+            writer.Dispose();
             requests.Dispose();
         }
     }
