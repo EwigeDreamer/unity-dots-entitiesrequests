@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.1] - 2026-04-28
+
+### Added
+- Added `ParallelWriteRaceConditionTest` to verify concurrent write behavior and document limitations of mixing sync/parallel writes.
+
+### Changed
+- Improved documentation: added a warning about mixing synchronous and parallel writes with a collapsible note.
+
 ## [1.0.0] - 2026-04-23
 
 ### Added

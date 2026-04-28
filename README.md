@@ -136,6 +136,33 @@ For batch parallel jobs, use `IJobParallelForBatch` and `ScheduleParallel` — t
 
 Always call `EnsureRequestBufferCapacity` before parallel writes to avoid reallocations inside the job.
 
+<div style="border: 2px solid #e6b800; background-color: #fff8e711; padding: 10px; border-radius: 5px;">
+<strong>Important: Do not mix synchronous and parallel writes!</strong>
+
+<details>
+<summary>Why?</summary>
+
+The request buffer supports two mutually exclusive write modes for a given request type **within the same frame**:
+- **Synchronous writes** – using `RequestWriter<T>.Write()`.
+- **Parallel writes** – using `RequestWriter<T>.ParallelWriter.WriteNoResize()`.
+
+If any system schedules a parallel job that writes to a request buffer, **no other system may write synchronously** to that same buffer in the same frame, even if the synchronous write happens before the job is scheduled or after it completes.
+
+Mixing modes will cause Unity's safety system to throw an `InvalidOperationException` because the synchronous write requests exclusive access while parallel jobs may still be active.
+
+### ✅ Allowed patterns
+- All writers use synchronous `Write()` (no parallel jobs).
+- All writers use parallel `WriteNoResize()` (every system calls `AsParallelWriter()` and uses `WriteNoResize`).
+
+### ❌ Forbidden pattern
+- Some writers use synchronous `Write()` while others use parallel `WriteNoResize()` in the same frame.
+
+### 💡 Recommendation
+If you ever need to write from a parallel job, **always use `AsParallelWriter()` and `WriteNoResize` for all writes** of that request type. Ensure sufficient capacity beforehand with `EnsureRequestBufferCapacity<T>()`.
+
+</details>
+</div>
+
 ## Manual Usage (Without ECS)
 You can create an `Requests<T>` container directly:
 
