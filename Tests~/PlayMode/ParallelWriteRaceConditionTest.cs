@@ -81,6 +81,7 @@ namespace ED.DOTS.EntitiesRequests.Tests
 
         // System that writes synchronously (without a job)
         [DisableAutoCreation]
+        [UpdateAfter(typeof(ParallelWriterSystem))]
         public partial class SingleWriterSystem : SystemBase
         {
             private RequestWriter<RaceTestRequest> _writer;
