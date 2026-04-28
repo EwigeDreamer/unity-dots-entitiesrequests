@@ -33,7 +33,7 @@ namespace ED.DOTS.EntitiesRequests.Tests
             protected override void OnCreate()
             {
                 _writer = this.GetRequestWriter<RaceTestRequest>();
-                EntityManager.EnsureRequestBufferCapacity<RaceTestRequest>(RequestCount);
+                this.EnsureRequestBufferCapacity<RaceTestRequest>(RequestCount);
             }
 
             protected override void OnUpdate()
@@ -61,7 +61,7 @@ namespace ED.DOTS.EntitiesRequests.Tests
             protected override void OnCreate()
             {
                 _writer = this.GetRequestWriter<RaceTestRequest>();
-                EntityManager.EnsureRequestBufferCapacity<RaceTestRequest>(RequestCount);
+                this.EnsureRequestBufferCapacity<RaceTestRequest>(RequestCount);
             }
 
             protected override void OnUpdate()

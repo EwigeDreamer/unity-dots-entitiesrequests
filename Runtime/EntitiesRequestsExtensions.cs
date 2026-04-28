@@ -136,5 +136,17 @@ namespace ED.DOTS.EntitiesRequests
             var singleton = EntitiesRequestsHelper.GetOrCreateSingleton<T>(entityManager);
             singleton.Requests.EnsureCapacity(capacity);
         }
+
+        /// <summary>
+        /// Ensures that the internal request buffers have at least the specified capacity.
+        /// </summary>
+        /// <typeparam name="T">Unmanaged request type.</typeparam>
+        /// <param name="entityManager">The entity manager.</param>
+        /// <param name="capacity">Minimum capacity required.</param>
+        public static unsafe void EnsureRequestBufferCapacity<T>(this SystemBase systemBase, int capacity)
+            where T : unmanaged
+        {
+            EnsureRequestBufferCapacity<T>(ref systemBase.CheckedStateRef, capacity);
+        }
     }
 }
