@@ -31,8 +31,13 @@ namespace ED.DOTS.EntitiesRequests.Samples
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
-            _writer = state.GetRequestWriter<AdvancedRequest>();
-            state.EnsureRequestBufferCapacity<AdvancedRequest>(RequestCount);
+            _writer = state.GetRequestWriter<AdvancedRequest>(RequestCount);
+        }
+
+        [BurstCompile]
+        public void OnDestroy(ref SystemState state)
+        {
+            _writer.Dispose();
         }
 
         [BurstCompile]
@@ -99,11 +104,11 @@ namespace ED.DOTS.EntitiesRequests.Samples
                 if (req.Index < min) min = req.Index;
                 if (req.Index > max) max = req.Index;
             }
+            _reader.Clear();
 
             if (count > 0)
             {
                 Debug.Log($"[Receiver] Received {count} AdvancedRequests. Min index: {min}, Max index: {max}");
-                _reader.Clear();
             }
         }
     }

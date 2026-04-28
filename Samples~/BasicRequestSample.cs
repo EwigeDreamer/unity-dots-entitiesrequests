@@ -25,8 +25,14 @@ namespace ED.DOTS.EntitiesRequests.Samples
 
         protected override void OnCreate()
         {
-            // Cache the writer for performance
-            _writer = this.GetRequestWriter<BasicRequest>();
+            // Cache the writer with initial capacity 64
+            _writer = this.GetRequestWriter<BasicRequest>(64);
+        }
+
+        protected override void OnDestroy()
+        {
+            // Explicitly dispose the writer to free its private buffer
+            _writer.Dispose();
         }
 
         protected override void OnUpdate()

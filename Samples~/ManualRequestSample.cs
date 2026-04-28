@@ -17,8 +17,8 @@ namespace ED.DOTS.EntitiesRequests.Samples
 
         private void Start()
         {
-            _requests = new Requests<int>(64, Allocator.Persistent);
-            _writer = _requests.GetWriter();
+            _requests = new Requests<int>(128, Allocator.Persistent);
+            _writer = _requests.GetWriter(128);
             _reader = _requests.GetReader();
             _counter = 0;
         }
@@ -56,7 +56,10 @@ namespace ED.DOTS.EntitiesRequests.Samples
         private void OnDestroy()
         {
             if (_requests.IsCreated)
+            {
+                _writer.Dispose();
                 _requests.Dispose();
+            }
         }
     }
 }
