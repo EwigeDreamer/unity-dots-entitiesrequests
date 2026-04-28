@@ -16,9 +16,9 @@ A library that adds request‑response style messaging to Unity's Entity Compone
 ## Requirements
 * Unity 6000.0 or higher
 * Packages:
-    * `com.unity.entities` 1.4.5 or higher
-    * `com.unity.collections` 2.6.5 or higher
-    * `com.unity.burst` 1.8.27 or higher
+  * `com.unity.entities` 1.4.5 or higher
+  * `com.unity.collections` 2.6.5 or higher
+  * `com.unity.burst` 1.8.27 or higher
 
 ## Installation
 Add the package via Package Manager using the git URL:
@@ -57,6 +57,11 @@ public partial class SenderSystem : SystemBase
     protected override void OnCreate()
     {
         _writer = this.GetRequestWriter<MyRequest>();
+    }
+
+    protected override void OnDestroy()
+    {
+        _writer.Dispose();
     }
 
     protected override void OnUpdate()
@@ -115,56 +120,27 @@ In your system, cache the writer and schedule the job:
 
 ```csharp
 private RequestWriter<MyRequest> _writer;
+private const int RequestCount = 1000;
 
 protected override void OnCreate()
 {
-    _writer = this.GetRequestWriter<MyRequest>();
+    _writer = this.GetRequestWriter<MyRequest>(RequestCount);
 }
 
 protected override void OnUpdate()
 {
-    // Ensure capacity before scheduling
-    this.EnsureRequestBufferCapacity<MyRequest>(requestCount);
-
     var parallelWriter = _writer.AsParallelWriter();
     var job = new ParallelJob { Writer = parallelWriter };
-    Dependency = job.Schedule(requestCount, 64, Dependency);
+    Dependency = job.Schedule(RequestCount, 64, Dependency);
 }
 ```
 
 For batch parallel jobs, use `IJobParallelForBatch` and `ScheduleParallel` — the writer remains safe under high contention.
 
-Always call `EnsureRequestBufferCapacity` before parallel writes to avoid reallocations inside the job.
-
-<div style="border: 2px solid #e6b800; background-color: #fff8e711; padding: 10px; border-radius: 5px;">
-<strong>Important: Do not mix synchronous and parallel writes!</strong>
-
-<details>
-<summary>Why?</summary>
-
-The request buffer supports two mutually exclusive write modes for a given request type **within the same frame**:
-- **Synchronous writes** – using `RequestWriter<T>.Write()`.
-- **Parallel writes** – using `RequestWriter<T>.ParallelWriter.WriteNoResize()`.
-
-If any system schedules a parallel job that writes to a request buffer, **no other system may write synchronously** to that same buffer in the same frame, even if the synchronous write happens before the job is scheduled or after it completes.
-
-Mixing modes will cause Unity's safety system to throw an `InvalidOperationException` because the synchronous write requests exclusive access while parallel jobs may still be active.
-
-### ✅ Allowed patterns
-- All writers use synchronous `Write()` (no parallel jobs).
-- All writers use parallel `WriteNoResize()` (every system calls `AsParallelWriter()` and uses `WriteNoResize`).
-
-### ❌ Forbidden pattern
-- Some writers use synchronous `Write()` while others use parallel `WriteNoResize()` in the same frame.
-
-### 💡 Recommendation
-If you ever need to write from a parallel job, **always use `AsParallelWriter()` and `WriteNoResize` for all writes** of that request type. Ensure sufficient capacity beforehand with `EnsureRequestBufferCapacity<T>()`.
-
-</details>
-</div>
+> **Note:** Each `RequestWriter` owns its own private buffer. Make sure to call `Dispose()` in `OnDestroy` to avoid memory leaks.
 
 ## Manual Usage (Without ECS)
-You can create an `Requests<T>` container directly:
+You can create a `Requests<T>` container directly:
 
 ```csharp
 var requests = new Requests<int>(64, Allocator.Persistent);
@@ -180,13 +156,14 @@ foreach (int val in reader.Read())
 }
 reader.Clear(); // explicit clear
 
+writer.Dispose();
 requests.Dispose();
 ```
 
 ## Performance Considerations
-* Cache `RequestWriter` and `RequestReader` in `OnCreate` – they safely update internal pointers when buffers are updated.
-* Always call `EnsureRequestBufferCapacity` before parallel writes to avoid reallocations inside jobs.
-* Ensure all write jobs are completed before the end of the frame – the request system automatically waits for dependencies declared via `GetComponentTypeHandle`.
+* Cache `RequestWriter` and `RequestReader` in `OnCreate` – they safely reference internal buffers.
+  Always provide an appropriate `initialCapacity` when creating a writer to avoid reallocations (especially for parallel writes).
+  Always call `Dispose()` on your `RequestWriter` (in system `OnDestroy`) to free its private buffer and unregister it.
 * Call `Clear()` on the reader as soon as processing is done to avoid accumulating stale requests.
 
 ## License
@@ -194,6 +171,6 @@ requests.Dispose();
 [MIT License](LICENSE.md)
 
 ## Acknowledgements
-This project is based on the design of [EntitiesEvents](https://github.com/annulusgames/EntitiesEvents) by [annulusgames](https://github.com/annulusgames), adapted for many‑to‑one command messaging with explicit clearing.
+This project was inspired by the original [EntitiesEvents](https://github.com/annulusgames/EntitiesEvents) concept by [annulusgames](https://github.com/annulusgames), but has been completely rewritten to support multiple independent writer buffers, explicit resource disposal, and safe mixed sync/parallel writing.
 
 Created with the support of artificial intelligence.
