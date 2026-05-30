@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using Unity.Burst;
+using Unity.Collections;
 using Unity.Collections.LowLevel.Unsafe;
 
 namespace ED.DOTS.EntitiesRequests
@@ -14,15 +15,27 @@ namespace ED.DOTS.EntitiesRequests
     /// <typeparam name="T">Unmanaged request type.</typeparam>
     [BurstCompile]
     [NativeContainer]
-    [NativeContainerIsReadOnly]
     public unsafe struct RequestReader<T> where T : unmanaged
     {
         [NativeDisableUnsafePtrRestriction]
         private readonly RequestsData<T>* _data;
 
+#if ENABLE_UNITY_COLLECTIONS_CHECKS
+        private AtomicSafetyHandle m_Safety;
+        private static readonly SharedStatic<int> s_staticSafetyId = SharedStatic<int>.GetOrCreate<RequestReader<T>>();
+#endif
+
         internal RequestReader(in Requests<T> requests)
         {
             _data = requests.GetUnsafeData();
+
+#if ENABLE_UNITY_COLLECTIONS_CHECKS
+            m_Safety = CollectionHelper.CreateSafetyHandle(Allocator.Persistent);
+            CollectionHelper.SetStaticSafetyId<RequestReader<T>>(ref m_Safety, ref s_staticSafetyId.Data);
+            if (UnsafeUtility.IsNativeContainerType<T>())
+                AtomicSafetyHandle.SetNestedContainer(m_Safety, true);
+            AtomicSafetyHandle.SetBumpSecondaryVersionOnScheduleWrite(m_Safety, true);
+#endif
         }
 
         /// <summary>
@@ -31,11 +44,10 @@ namespace ED.DOTS.EntitiesRequests
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public RequestIterator Read()
         {
-            var readBuffer = _data->GetReadBuffer();
-
 #if ENABLE_UNITY_COLLECTIONS_CHECKS
-            AtomicSafetyHandle.CheckReadAndThrow(readBuffer->m_Safety);
+            AtomicSafetyHandle.CheckReadAndThrow(m_Safety);
 #endif
+            var readBuffer = _data->GetReadBuffer();
             return new RequestIterator(readBuffer);
         }
 
@@ -45,10 +57,10 @@ namespace ED.DOTS.EntitiesRequests
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Clear()
         {
-            var readBuffer = _data->GetReadBuffer();
 #if ENABLE_UNITY_COLLECTIONS_CHECKS
-            AtomicSafetyHandle.CheckWriteAndThrow(readBuffer->m_Safety);
+            AtomicSafetyHandle.CheckWriteAndThrow(m_Safety);
 #endif
+            var readBuffer = _data->GetReadBuffer();
             readBuffer->Clear();
         }
 
