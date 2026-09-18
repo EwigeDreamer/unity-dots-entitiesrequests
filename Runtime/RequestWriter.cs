@@ -23,7 +23,7 @@ namespace ED.DOTS.EntitiesRequests
         [NativeDisableUnsafePtrRestriction]
         private NativeRequestBuffer<T>* _buffer;
 
-        private readonly Allocator _allocator;
+        private readonly AllocatorManager.AllocatorHandle _allocator;
 
         /// <summary>
         /// Creates a new RequestWriter with its own private buffer, registers it, and prepares for writing.
@@ -31,7 +31,7 @@ namespace ED.DOTS.EntitiesRequests
         /// <param name="requests">The parent Requests container.</param>
         /// <param name="initialCapacity">Initial capacity for the private buffer.</param>
         /// <param name="allocator">Allocator used for the private buffer.</param>
-        internal RequestWriter(in Requests<T> requests, int initialCapacity, Allocator allocator)
+        internal RequestWriter(in Requests<T> requests, int initialCapacity, AllocatorManager.AllocatorHandle allocator)
         {
             _data = requests._data;
             _allocator = allocator;
@@ -39,7 +39,7 @@ namespace ED.DOTS.EntitiesRequests
             // Allocate and initialize the private buffer
             var size = UnsafeUtility.SizeOf<NativeRequestBuffer<T>>();
             var alignment = UnsafeUtility.AlignOf<NativeRequestBuffer<T>>();
-            _buffer = (NativeRequestBuffer<T>*)UnsafeUtility.MallocTracked(size, alignment, _allocator, 1);
+            _buffer = (NativeRequestBuffer<T>*)AllocatorManager.Allocate(_allocator, size, alignment, 1);
             UnsafeUtility.MemClear(_buffer, size);
             var tempBuffer = new NativeRequestBuffer<T>(initialCapacity, _allocator);
             UnsafeUtility.CopyStructureToPtr(ref tempBuffer, _buffer);
@@ -99,7 +99,7 @@ namespace ED.DOTS.EntitiesRequests
 
             _data->UnregisterWriteBuffer(_buffer);
             _buffer->Dispose();
-            UnsafeUtility.FreeTracked(_buffer, _allocator);
+            AllocatorManager.Free(_allocator, _buffer, UnsafeUtility.SizeOf<NativeRequestBuffer<T>>(), UnsafeUtility.AlignOf<NativeRequestBuffer<T>>(), 1);
             _buffer = null;
         }
 

@@ -18,17 +18,17 @@ namespace ED.DOTS.EntitiesRequests
         [NativeDisableUnsafePtrRestriction]
         internal RequestsData<T>* _data;
 
-        private readonly Allocator _allocator;
+        private readonly AllocatorManager.AllocatorHandle _allocator;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="Requests{T}"/> struct.
         /// </summary>
         /// <param name="initialCapacity">Initial capacity of the read buffer and the writer list.</param>
         /// <param name="allocator">Allocator to use for all internal allocations.</param>
-        public Requests(int initialCapacity, Allocator allocator)
+        public Requests(int initialCapacity, AllocatorManager.AllocatorHandle allocator)
         {
 #if ENABLE_UNITY_COLLECTIONS_CHECKS
-            if (allocator <= Allocator.None)
+            if (allocator.Index <= (ushort)Allocator.None)
                 throw new ArgumentException("Allocator must be Temp, TempJob, Persistent or registered custom allocator", nameof(allocator));
             if (initialCapacity < 0)
                 throw new ArgumentOutOfRangeException(nameof(initialCapacity), "InitialCapacity must be >= 0");
@@ -36,7 +36,7 @@ namespace ED.DOTS.EntitiesRequests
 
             var size = UnsafeUtility.SizeOf<RequestsData<T>>();
             var alignment = UnsafeUtility.AlignOf<RequestsData<T>>();
-            _data = (RequestsData<T>*)UnsafeUtility.MallocTracked(size, alignment, allocator, 1);
+            _data = (RequestsData<T>*)AllocatorManager.Allocate(allocator, size, alignment, 1);
             UnsafeUtility.MemClear(_data, size);
 
             var data = new RequestsData<T>(initialCapacity, allocator);
@@ -107,7 +107,7 @@ namespace ED.DOTS.EntitiesRequests
                 return;
 
             _data->Dispose();
-            UnsafeUtility.FreeTracked(_data, _allocator);
+            AllocatorManager.Free(_allocator, _data, UnsafeUtility.SizeOf<RequestsData<T>>(), UnsafeUtility.AlignOf<RequestsData<T>>(), 1);
             _data = null;
         }
 

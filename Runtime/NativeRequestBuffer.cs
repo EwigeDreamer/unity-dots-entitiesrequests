@@ -19,7 +19,7 @@ namespace ED.DOTS.EntitiesRequests
         [NativeDisableUnsafePtrRestriction]
         internal UnsafeList<T>* _listPtr;
 
-        private Allocator _allocator;
+        private AllocatorManager.AllocatorHandle _allocator;
 
 #if ENABLE_UNITY_COLLECTIONS_CHECKS
         internal AtomicSafetyHandle m_Safety;
@@ -30,10 +30,10 @@ namespace ED.DOTS.EntitiesRequests
         /// </summary>
         /// <param name="initialCapacity">Initial capacity of the internal list.</param>
         /// <param name="allocator">Allocator to use for memory allocations.</param>
-        public NativeRequestBuffer(int initialCapacity, Allocator allocator)
+        public NativeRequestBuffer(int initialCapacity, AllocatorManager.AllocatorHandle allocator)
         {
 #if ENABLE_UNITY_COLLECTIONS_CHECKS
-            if (allocator <= Allocator.None)
+            if (allocator.Index <= (ushort)Allocator.None)
                 throw new ArgumentException("Allocator must be Temp, TempJob, Persistent or registered custom allocator", nameof(allocator));
             if (initialCapacity < 0)
                 throw new ArgumentOutOfRangeException(nameof(initialCapacity), "InitialCapacity must be >= 0");
@@ -41,7 +41,7 @@ namespace ED.DOTS.EntitiesRequests
 
             var size = UnsafeUtility.SizeOf<UnsafeList<T>>();
             var alignment = UnsafeUtility.AlignOf<UnsafeList<T>>();
-            _listPtr = (UnsafeList<T>*)UnsafeUtility.MallocTracked(size, alignment, allocator, 1);
+            _listPtr = (UnsafeList<T>*)AllocatorManager.Allocate(allocator, size, alignment, 1);
             UnsafeUtility.MemClear(_listPtr, size);
             var list = new UnsafeList<T>(initialCapacity, allocator);
             UnsafeUtility.CopyStructureToPtr(ref list, _listPtr);
@@ -138,7 +138,7 @@ namespace ED.DOTS.EntitiesRequests
             CollectionHelper.DisposeSafetyHandle(ref m_Safety);
 #endif
             _listPtr->Dispose();
-            UnsafeUtility.FreeTracked(_listPtr, _allocator);
+            AllocatorManager.Free(_allocator, _listPtr, UnsafeUtility.SizeOf<UnsafeList<T>>(), UnsafeUtility.AlignOf<UnsafeList<T>>(), 1);
             _listPtr = null;
         }
 

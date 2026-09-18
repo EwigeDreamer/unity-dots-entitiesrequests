@@ -20,17 +20,17 @@ namespace ED.DOTS.EntitiesRequests
         [NativeDisableUnsafePtrRestriction]
         private NativeRequestBuffer<T>* _readBuffer;
 
-        private readonly Allocator _allocator;
+        private readonly AllocatorManager.AllocatorHandle _allocator;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="RequestsData{T}"/> struct.
         /// </summary>
         /// <param name="initialCapacity">Initial capacity for the read buffer and for the list of writer pointers.</param>
         /// <param name="allocator">Allocator to use for all internal allocations.</param>
-        public RequestsData(int initialCapacity, Allocator allocator)
+        public RequestsData(int initialCapacity, AllocatorManager.AllocatorHandle allocator)
         {
 #if ENABLE_UNITY_COLLECTIONS_CHECKS
-            if (allocator <= Allocator.None)
+            if (allocator.Index <= (ushort)Allocator.None)
                 throw new ArgumentException("Allocator must be Temp, TempJob, Persistent or registered custom allocator", nameof(allocator));
             if (initialCapacity < 0)
                 throw new ArgumentOutOfRangeException(nameof(initialCapacity), "InitialCapacity must be >= 0");
@@ -44,7 +44,7 @@ namespace ED.DOTS.EntitiesRequests
             // Allocate and initialize read buffer
             var size = UnsafeUtility.SizeOf<NativeRequestBuffer<T>>();
             var alignment = UnsafeUtility.AlignOf<NativeRequestBuffer<T>>();
-            _readBuffer = (NativeRequestBuffer<T>*)UnsafeUtility.MallocTracked(size, alignment, allocator, 1);
+            _readBuffer = (NativeRequestBuffer<T>*)AllocatorManager.Allocate(allocator, size, alignment, 1);
             UnsafeUtility.MemClear(_readBuffer, size);
             var tempRead = new NativeRequestBuffer<T>(initialCapacity, allocator);
             UnsafeUtility.CopyStructureToPtr(ref tempRead, _readBuffer);
@@ -124,7 +124,7 @@ namespace ED.DOTS.EntitiesRequests
             if (_readBuffer != null)
             {
                 _readBuffer->Dispose();
-                UnsafeUtility.FreeTracked(_readBuffer, _allocator);
+                AllocatorManager.Free(_allocator, _readBuffer, UnsafeUtility.SizeOf<NativeRequestBuffer<T>>(), UnsafeUtility.AlignOf<NativeRequestBuffer<T>>(), 1);
                 _readBuffer = null;
             }
 
