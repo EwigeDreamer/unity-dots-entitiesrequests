@@ -6,6 +6,11 @@ using Unity.Collections.LowLevel.Unsafe;
 
 namespace ED.DOTS.EntitiesRequests.Tests
 {
+    public struct LifetimeRequest
+    {
+        public int Value;
+    }
+
     /// <summary>
     /// Deterministic use-after-free regression tests. The shared <see cref="RequestsData{T}"/>
     /// block must not be freed while any writer still owns it (deferred-free contract).
