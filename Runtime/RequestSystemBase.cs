@@ -45,6 +45,12 @@ namespace ED.DOTS.EntitiesRequests
         [BurstCompile]
         protected override void OnDestroy()
         {
+            // Complete tracked jobs before closing the container, so no pending job is still
+            // reading the shared buffers while they are being freed. World.Dispose already does
+            // this before destroying all systems; this also covers destroying a request system
+            // individually while producers have registered dependencies.
+            EntityManager.CompleteAllTrackedJobs();
+
             if (SystemAPI.TryGetSingleton<RequestSingleton<T>>(out var singleton))
             {
                 singleton.Requests.Dispose();

@@ -22,6 +22,10 @@ namespace ED.DOTS.EntitiesRequests
 
         private readonly AllocatorManager.AllocatorHandle _allocator;
 
+        // True once the owner (Requests) has been disposed. The shared block is freed only
+        // after both the owner and every registered writer have released it (see FreeIfUnowned).
+        private bool _ownerDisposed;
+
         /// <summary>
         /// Initializes a new instance of the <see cref="RequestsData{T}"/> struct.
         /// </summary>
@@ -37,6 +41,7 @@ namespace ED.DOTS.EntitiesRequests
 #endif
 
             _allocator = allocator;
+            _ownerDisposed = false;
 
             // Initialize list of writer buffer pointers (stores IntPtr to NativeRequestBuffer<T>*)
             _writeBufferPtrs = new UnsafeList<IntPtr>(4, allocator);
@@ -116,20 +121,34 @@ namespace ED.DOTS.EntitiesRequests
         }
 
         /// <summary>
-        /// Disposes the read buffer and the list of writer pointers.
-        /// Does not dispose individual writer buffers – they are owned by RequestWriter instances.
+        /// Closes the owner and disposes its read buffer. The registry of writer pointers and the
+        /// shared block itself are kept alive until every registered writer has unregistered,
+        /// so a writer's teardown never dereferences an already freed allocation.
         /// </summary>
         public void Dispose()
         {
+            _ownerDisposed = true;
+
             if (_readBuffer != null)
             {
                 _readBuffer->Dispose();
                 AllocatorManager.Free(_allocator, _readBuffer, UnsafeUtility.SizeOf<NativeRequestBuffer<T>>(), UnsafeUtility.AlignOf<NativeRequestBuffer<T>>(), 1);
                 _readBuffer = null;
             }
+        }
 
-            if (_writeBufferPtrs.IsCreated)
-                _writeBufferPtrs.Dispose();
+        /// <summary>
+        /// Frees the shared block only after both the owner and every writer have released it.
+        /// Called from both <see cref="Requests{T}.Dispose"/> and <see cref="RequestWriter{T}.Dispose"/>.
+        /// </summary>
+        internal static void FreeIfUnowned(RequestsData<T>* data)
+        {
+            if (!data->_ownerDisposed || data->_writeBufferPtrs.Length != 0)
+                return;
+
+            var allocator = data->_allocator;
+            data->_writeBufferPtrs.Dispose();
+            AllocatorManager.Free(allocator, data, UnsafeUtility.SizeOf<RequestsData<T>>(), UnsafeUtility.AlignOf<RequestsData<T>>(), 1);
         }
     }
 }

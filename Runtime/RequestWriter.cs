@@ -18,7 +18,7 @@ namespace ED.DOTS.EntitiesRequests
     public unsafe struct RequestWriter<T> : IDisposable where T : unmanaged
     {
         [NativeDisableUnsafePtrRestriction]
-        private readonly RequestsData<T>* _data;
+        private RequestsData<T>* _data;
 
         [NativeDisableUnsafePtrRestriction]
         private NativeRequestBuffer<T>* _buffer;
@@ -101,6 +101,9 @@ namespace ED.DOTS.EntitiesRequests
             _buffer->Dispose();
             AllocatorManager.Free(_allocator, _buffer, UnsafeUtility.SizeOf<NativeRequestBuffer<T>>(), UnsafeUtility.AlignOf<NativeRequestBuffer<T>>(), 1);
             _buffer = null;
+
+            RequestsData<T>.FreeIfUnowned(_data);
+            _data = null;
         }
 
         /// <summary>

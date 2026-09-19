@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.2] - 2026-09-20
+
+### Changed
+- `Requests<T>`, `RequestsData<T>`, `NativeRequestBuffer<T>` and `RequestWriter<T>` now accept `AllocatorManager.AllocatorHandle`, supporting custom allocators while remaining source-compatible with the `Allocator` enum.
+
+### Fixed
+- Fixed a use-after-free crash during world teardown: the shared request block is now freed only after the owner and all registered writers have been disposed, so either destruction order is safe.
+
 ## [1.1.1] - 2026-05-30
 
 ### Added

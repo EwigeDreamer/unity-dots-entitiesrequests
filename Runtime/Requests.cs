@@ -107,7 +107,7 @@ namespace ED.DOTS.EntitiesRequests
                 return;
 
             _data->Dispose();
-            AllocatorManager.Free(_allocator, _data, UnsafeUtility.SizeOf<RequestsData<T>>(), UnsafeUtility.AlignOf<RequestsData<T>>(), 1);
+            RequestsData<T>.FreeIfUnowned(_data);
             _data = null;
         }
 
