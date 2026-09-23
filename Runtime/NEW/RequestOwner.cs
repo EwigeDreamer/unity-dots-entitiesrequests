@@ -1,5 +1,6 @@
 using System.Runtime.CompilerServices;
 using Unity.Entities;
+using Unity.Jobs;
 
 namespace ED.DOTS.EntitiesRequests.Tmp
 {
@@ -44,20 +45,20 @@ namespace ED.DOTS.EntitiesRequests.Tmp
         /// <summary>
         /// Cuts the entry point and closes the bank. Destroying the marker entity is a structural change
         /// and therefore a sync point: it completes every in-flight job, a merge job included, before
-        /// the bank buffers are freed. When the bank was never created, this is a silent no-op.
+        /// the bank buffers are freed. When the marker is absent, this is a silent no-op.
         /// </summary>
         /// <param name="state">Reference to the system state.</param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static void OnDestroy(ref SystemState state)
         {
             var query = state.GetEntityQuery(ComponentType.ReadOnly<RequestSingleton<T>>());
-            if (!query.TryGetSingleton<RequestSingleton<T>>(out var singleton))
+            if (!query.TryGetSingletonEntity<RequestSingleton<T>>(out var entity))
             {
                 return;
             }
 
-            var bank = singleton.Bank;
-            state.EntityManager.DestroyEntity(query.GetSingletonEntity<RequestSingleton<T>>());
+            var bank = query.GetSingleton<RequestSingleton<T>>().Bank;
+            state.EntityManager.DestroyEntity(entity);
             bank.Dispose();
         }
     }
