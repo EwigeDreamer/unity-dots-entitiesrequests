@@ -1,4 +1,5 @@
 using System;
+using System.Runtime.CompilerServices;
 using Unity.Collections;
 using Unity.Collections.LowLevel.Unsafe;
 
@@ -141,6 +142,7 @@ namespace ED.DOTS.EntitiesRequests.Tmp
             _readBuffer = null;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static UnsafeList<U>* CreateList<U>(AllocatorManager.AllocatorHandle allocator, int capacity) where U : unmanaged
         {
             var size = UnsafeUtility.SizeOf<UnsafeList<U>>();
@@ -150,6 +152,7 @@ namespace ED.DOTS.EntitiesRequests.Tmp
             return listPtr;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static void FreeList<U>(UnsafeList<U>* list, AllocatorManager.AllocatorHandle allocator) where U : unmanaged
         {
             list->Dispose();

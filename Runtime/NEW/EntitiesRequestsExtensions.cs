@@ -1,3 +1,4 @@
+using System.Runtime.CompilerServices;
 using Unity.Entities;
 
 namespace ED.DOTS.EntitiesRequests.Tmp
@@ -19,6 +20,7 @@ namespace ED.DOTS.EntitiesRequests.Tmp
         /// <param name="state">Reference to the system state.</param>
         /// <param name="capacity">Initial capacity of the writer's private buffer.</param>
         /// <returns>A writer card.</returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static RequestWriter<T> GetRequestWriter<T>(this ref SystemState state, int capacity = 64) where T : unmanaged
         {
             state.GetComponentTypeHandle<RequestSingleton<T>>();
@@ -35,6 +37,7 @@ namespace ED.DOTS.EntitiesRequests.Tmp
         /// <typeparam name="T">Unmanaged request type.</typeparam>
         /// <param name="state">Reference to the system state.</param>
         /// <returns>A reader card.</returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static RequestReader<T> GetRequestReader<T>(this ref SystemState state) where T : unmanaged
         {
             state.GetComponentTypeHandle<RequestSingleton<T>>(true);
@@ -49,6 +52,7 @@ namespace ED.DOTS.EntitiesRequests.Tmp
         /// <param name="systemBase">The system base instance.</param>
         /// <param name="capacity">Initial capacity of the writer's private buffer.</param>
         /// <returns>A writer card.</returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static RequestWriter<T> GetRequestWriter<T>(this SystemBase systemBase, int capacity = 64) where T : unmanaged
         {
             return GetRequestWriter<T>(ref systemBase.CheckedStateRef, capacity);
@@ -60,6 +64,7 @@ namespace ED.DOTS.EntitiesRequests.Tmp
         /// <typeparam name="T">Unmanaged request type.</typeparam>
         /// <param name="systemBase">The system base instance.</param>
         /// <returns>A reader card.</returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static RequestReader<T> GetRequestReader<T>(this SystemBase systemBase) where T : unmanaged
         {
             return GetRequestReader<T>(ref systemBase.CheckedStateRef);

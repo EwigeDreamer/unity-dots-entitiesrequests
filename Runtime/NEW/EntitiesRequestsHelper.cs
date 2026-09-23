@@ -1,3 +1,4 @@
+using System.Runtime.CompilerServices;
 using Unity.Collections;
 using Unity.Entities;
 
@@ -18,6 +19,7 @@ namespace ED.DOTS.EntitiesRequests.Tmp
         /// <typeparam name="T">Unmanaged request type.</typeparam>
         /// <param name="state">Reference to the system state.</param>
         /// <returns>The bank of this request type.</returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static RequestBank<T> GetOrCreateBank<T>(ref SystemState state) where T : unmanaged
         {
             using var builder = new EntityQueryBuilder(Allocator.Temp).WithAll<RequestSingleton<T>>();
