@@ -12,6 +12,7 @@ namespace ED.DOTS.EntitiesRequests.Tmp
     /// <typeparam name="T">Unmanaged request type.</typeparam>
     public unsafe struct RequestBank<T> : IDisposable where T : unmanaged
     {
+        [NativeDisableUnsafePtrRestriction]
         private BankData<T>* _data;
 
         /// <summary>Allocator of the bank block. Guaranteed to equal the allocator of every bank field.</summary>

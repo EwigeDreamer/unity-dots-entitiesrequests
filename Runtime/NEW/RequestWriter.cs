@@ -100,6 +100,7 @@ namespace ED.DOTS.EntitiesRequests.Tmp
         /// </summary>
         public unsafe struct ParallelWriter
         {
+            [NativeDisableUnsafePtrRestriction]
             private CardData<T>* _data;
 
             internal ParallelWriter(CardData<T>* data)
