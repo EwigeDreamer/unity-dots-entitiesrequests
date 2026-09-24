@@ -34,9 +34,9 @@ namespace ED.DOTS.EntitiesRequests.Tmp.Tests
         /// <inheritdoc/>
         protected override void CollectSystems(List<Type> systems)
         {
-            systems.Add(typeof(HarnessSmokeRequest_RequestSystem));
             systems.Add(typeof(WriterSystem));
             systems.Add(typeof(ReaderSystem));
+            systems.Add(typeof(HarnessSmokeRequest_RequestSystem));
         }
 
         [Test]

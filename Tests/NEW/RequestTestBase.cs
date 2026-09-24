@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using NUnit.Framework;
+using Unity.Collections;
 using Unity.Entities;
 
 namespace ED.DOTS.EntitiesRequests.Tmp.Tests
@@ -56,6 +57,11 @@ namespace ED.DOTS.EntitiesRequests.Tmp.Tests
         /// Adds every system of this fixture: the generated request owners and the test writers and
         /// readers. Request type names must be unique across the whole test assembly, because a
         /// name collision produces duplicate generated systems and fails the build.
+        /// <para>
+        /// Add the generated owner <b>last</b>: the world destroys systems in reverse creation order,
+        /// so the owner then dies first on teardown with live cards still around — the order that used
+        /// to crash the client build.
+        /// </para>
         /// </summary>
         /// <param name="systems">List of system types to append this fixture's systems to.</param>
         protected virtual void CollectSystems(List<Type> systems) { }
@@ -80,6 +86,103 @@ namespace ED.DOTS.EntitiesRequests.Tmp.Tests
         {
             var handle = World.GetOrCreateSystem<T>();
             return ref World.Unmanaged.GetUnsafeSystemRef<T>(handle);
+        }
+
+        /// <summary>
+        /// Destroys a managed system created for this fixture, removing it from every group that holds
+        /// it first. Used by tests where a writer or reader has to disappear mid-run.
+        /// <para>
+        /// Overloading this name for managed and unmanaged systems is impossible: C# does not tell
+        /// generic methods apart by their constraints, so the two flavours carry distinct names.
+        /// </para>
+        /// </summary>
+        /// <typeparam name="T">Managed system type added by <see cref="CollectSystems"/>.</typeparam>
+        protected void DestroyManagedTestSystem<T>() where T : ComponentSystemBase
+        {
+            var target = World.GetExistingSystemManaged<T>();
+            if (target == null)
+            {
+                return;
+            }
+
+            foreach (var system in World.Systems)
+            {
+                if (!(system is ComponentSystemGroup group))
+                {
+                    continue;
+                }
+
+                if (!ContainsManaged(group, target))
+                {
+                    continue;
+                }
+
+                group.RemoveSystemFromUpdateList(target);
+                group.SortSystems();
+            }
+
+            World.DestroySystemManaged(target);
+        }
+
+        /// <summary>
+        /// Destroys an unmanaged system created for this fixture, removing it from every group that
+        /// holds it first: <see cref="World.DestroySystem"/> does not detach systems itself, and a
+        /// system may be listed in more than one group.
+        /// </summary>
+        /// <typeparam name="T">Unmanaged system type added by <see cref="CollectSystems"/>.</typeparam>
+        protected void DestroyUnmanagedTestSystem<T>() where T : unmanaged, ISystem
+        {
+            var target = World.GetExistingSystem<T>();
+            if (target == SystemHandle.Null)
+            {
+                return;
+            }
+
+            foreach (var system in World.Systems)
+            {
+                if (!(system is ComponentSystemGroup group))
+                {
+                    continue;
+                }
+
+                if (!ContainsUnmanaged(group, target))
+                {
+                    continue;
+                }
+
+                group.RemoveSystemFromUpdateList(target);
+                group.SortSystems();
+            }
+
+            World.DestroySystem(target);
+        }
+
+        private static bool ContainsManaged(ComponentSystemGroup group, ComponentSystemBase system)
+        {
+            var managed = group.ManagedSystems;
+            for (var i = 0; i < managed.Count; i++)
+            {
+                if (ReferenceEquals(managed[i], system))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        private static bool ContainsUnmanaged(ComponentSystemGroup group, SystemHandle system)
+        {
+            using var handles = group.GetUnmanagedSystems(Allocator.Temp);
+            for (var i = 0; i < handles.Length; i++)
+            {
+                if (handles[i] == system)
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         /// <summary>

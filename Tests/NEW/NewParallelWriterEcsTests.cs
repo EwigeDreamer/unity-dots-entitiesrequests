@@ -27,9 +27,9 @@ namespace ED.DOTS.EntitiesRequests.Tmp.Tests
         /// <inheritdoc/>
         protected override void CollectSystems(List<Type> systems)
         {
-            systems.Add(typeof(ParallelWriterEcsRequest_RequestSystem));
             systems.Add(typeof(ParallelWriterTestSystem));
             systems.Add(typeof(ParallelReaderTestSystem));
+            systems.Add(typeof(ParallelWriterEcsRequest_RequestSystem));
         }
 
         [Test]

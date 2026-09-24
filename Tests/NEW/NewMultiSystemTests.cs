@@ -23,7 +23,8 @@ namespace ED.DOTS.EntitiesRequests.Tmp.Tests
     /// Several independent writer systems feeding the same bank, with per-test request counts.
     /// Ported from <c>MultiSystemMultiWriterTests</c>. Parameters are configured after setup,
     /// before the first update, because the harness creates systems in batch. Unused writers default
-    /// to zero requests, so they stay inert in tests that do not configure them.
+    /// to zero requests, so they stay inert in tests that do not configure them. One case destroys a
+    /// writer mid-run to verify that its buffer leaves the bank registry and its data does not return.
     /// </summary>
     [TestFixture]
     public sealed class NewMultiSystemTests : RequestTestBase
@@ -31,11 +32,11 @@ namespace ED.DOTS.EntitiesRequests.Tmp.Tests
         /// <inheritdoc/>
         protected override void CollectSystems(List<Type> systems)
         {
-            systems.Add(typeof(MultiSystemRequest_RequestSystem));
             systems.Add(typeof(WriterSystem1));
             systems.Add(typeof(WriterSystem2));
             systems.Add(typeof(WriterSystem3));
             systems.Add(typeof(ReaderSystem));
+            systems.Add(typeof(MultiSystemRequest_RequestSystem));
         }
 
         [Test]
@@ -91,6 +92,42 @@ namespace ED.DOTS.EntitiesRequests.Tmp.Tests
                 {
                     Assert.IsTrue(reader.ReceivedValues.Contains(w * 10000 + v));
                 }
+            }
+        }
+
+        [Test]
+        public void WriterDispose_RemovesBufferFromRegistry()
+        {
+            const int count = 50;
+
+            var writer1 = World.GetExistingSystemManaged<WriterSystem1>();
+            writer1.WriterId = 1;
+            writer1.RequestCount = count;
+
+            var writer2 = World.GetExistingSystemManaged<WriterSystem2>();
+            writer2.WriterId = 2;
+            writer2.RequestCount = count;
+
+            UpdateWorld(1);
+
+            DestroyManagedTestSystem<WriterSystem1>();
+            Assert.IsNull(World.GetExistingSystemManaged<WriterSystem1>(), "the destroyed writer must be gone");
+
+            UpdateWorld(1);
+            Assert.That(World.GetExistingSystemManaged<ReaderSystem>().ReceivedCount, Is.EqualTo(count * 2));
+
+            UpdateWorld(1);
+
+            var reader = World.GetExistingSystemManaged<ReaderSystem>();
+            Assert.That(reader.ReceivedCount, Is.EqualTo(count));
+            for (var i = 0; i < count; i++)
+            {
+                Assert.IsTrue(reader.ReceivedValues.Contains(2 * 10000 + i));
+            }
+
+            for (var i = 0; i < count; i++)
+            {
+                Assert.IsFalse(reader.ReceivedValues.Contains(1 * 10000 + i));
             }
         }
 

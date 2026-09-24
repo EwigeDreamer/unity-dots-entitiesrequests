@@ -74,6 +74,9 @@ namespace ED.DOTS.EntitiesRequests.Tests
 
         public bool IsLive(IntPtr ptr) => m_live.ContainsKey(ptr);
 
+        /// <summary>Blocks that are still alive: allocated and not yet freed.</summary>
+        public int LiveCount => m_live.IsCreated ? m_live.Count() : 0;
+
         public AllocatorManager.TryFunction Function => Try;
 
         [BurstCompile(CompileSynchronously = true)]

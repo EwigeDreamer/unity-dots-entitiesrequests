@@ -28,11 +28,11 @@ namespace ED.DOTS.EntitiesRequests.Tmp.Tests
         /// <inheritdoc/>
         protected override void CollectSystems(List<Type> systems)
         {
-            systems.Add(typeof(RaceConditionRequest_RequestSystem));
             systems.Add(typeof(ParallelWriterSystem));
             systems.Add(typeof(AnotherParallelWriterSystem));
             systems.Add(typeof(SingleWriterSystem));
             systems.Add(typeof(ReaderSystem));
+            systems.Add(typeof(RaceConditionRequest_RequestSystem));
         }
 
         [Test]

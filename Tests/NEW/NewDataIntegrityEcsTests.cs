@@ -28,9 +28,9 @@ namespace ED.DOTS.EntitiesRequests.Tmp.Tests
         /// <inheritdoc/>
         protected override void CollectSystems(List<Type> systems)
         {
-            systems.Add(typeof(DataIntegrityEcsRequest_RequestSystem));
             systems.Add(typeof(DataIntegrityWriterSystem));
             systems.Add(typeof(DataIntegrityReaderSystem));
+            systems.Add(typeof(DataIntegrityEcsRequest_RequestSystem));
         }
 
         [Test]

@@ -32,10 +32,10 @@ namespace ED.DOTS.EntitiesRequests.Tmp.Tests
         /// <inheritdoc/>
         protected override void CollectSystems(List<Type> systems)
         {
-            systems.Add(typeof(MultiWriterRequest_RequestSystem));
             systems.Add(typeof(SyncWriterSystem));
             systems.Add(typeof(ParallelWriterSystem));
             systems.Add(typeof(ReaderSystem));
+            systems.Add(typeof(MultiWriterRequest_RequestSystem));
         }
 
         [Test]
