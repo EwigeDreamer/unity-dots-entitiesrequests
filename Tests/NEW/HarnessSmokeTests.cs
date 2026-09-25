@@ -5,20 +5,8 @@ using NUnit.Framework;
 using Unity.Collections;
 using Unity.Entities;
 
-[assembly: RegisterRequest(typeof(ED.DOTS.EntitiesRequests.Tmp.Tests.HarnessSmokeRequest))]
-
 namespace ED.DOTS.EntitiesRequests.Tmp.Tests
 {
-    /// <summary>
-    /// Request type of the harness smoke fixture. Its only purpose is to make the source generator
-    /// emit an owner system for this fixture.
-    /// </summary>
-    public struct HarnessSmokeRequest
-    {
-        /// <summary>Payload value.</summary>
-        public int Value;
-    }
-
     /// <summary>
     /// Verifies the engine contract the harness relies on: the root groups are created, the request
     /// group is nested into the simulation group and ordered after the late simulation group, and the
@@ -36,7 +24,7 @@ namespace ED.DOTS.EntitiesRequests.Tmp.Tests
         {
             systems.Add(typeof(WriterSystem));
             systems.Add(typeof(ReaderSystem));
-            systems.Add(typeof(HarnessSmokeRequest_RequestSystem));
+            systems.Add(typeof(TestRequest_1_RequestSystem));
         }
 
         [Test]
@@ -66,7 +54,7 @@ namespace ED.DOTS.EntitiesRequests.Tmp.Tests
         public void GeneratedOwner_SitsInsideRequestSystemGroup()
         {
             var requestGroup = World.GetExistingSystemManaged<RequestSystemGroup>();
-            var ownerTypeIndex = TypeManager.GetSystemTypeIndex<HarnessSmokeRequest_RequestSystem>();
+            var ownerTypeIndex = TypeManager.GetSystemTypeIndex<TestRequest_1_RequestSystem>();
 
             using var systems = requestGroup.GetAllSystems(Allocator.Temp);
             var found = false;
@@ -112,12 +100,12 @@ namespace ED.DOTS.EntitiesRequests.Tmp.Tests
         [DisableAutoCreation]
         public partial struct WriterSystem : ISystem
         {
-            private RequestWriter<HarnessSmokeRequest> _writer;
+            private RequestWriter<TestRequest_1> _writer;
 
             /// <inheritdoc/>
             public void OnCreate(ref SystemState state)
             {
-                _writer = state.GetRequestWriter<HarnessSmokeRequest>();
+                _writer = state.GetRequestWriter<TestRequest_1>();
             }
 
             /// <inheritdoc/>
@@ -129,7 +117,7 @@ namespace ED.DOTS.EntitiesRequests.Tmp.Tests
             /// <inheritdoc/>
             public void OnUpdate(ref SystemState state)
             {
-                _writer.Write(new HarnessSmokeRequest { Value = WrittenValue });
+                _writer.Write(new TestRequest_1 { Value = WrittenValue });
             }
         }
 
@@ -137,7 +125,7 @@ namespace ED.DOTS.EntitiesRequests.Tmp.Tests
         [DisableAutoCreation]
         public partial struct ReaderSystem : ISystem
         {
-            private RequestReader<HarnessSmokeRequest> _reader;
+            private RequestReader<TestRequest_1> _reader;
 
             /// <summary>Requests read during the last update.</summary>
             public int ReceivedCount;
@@ -145,7 +133,7 @@ namespace ED.DOTS.EntitiesRequests.Tmp.Tests
             /// <inheritdoc/>
             public void OnCreate(ref SystemState state)
             {
-                _reader = state.GetRequestReader<HarnessSmokeRequest>();
+                _reader = state.GetRequestReader<TestRequest_1>();
             }
 
             /// <inheritdoc/>

@@ -4,17 +4,8 @@ using ED.DOTS.EntitiesRequests.Tmp;
 using NUnit.Framework;
 using Unity.Entities;
 
-[assembly: RegisterRequest(typeof(ED.DOTS.EntitiesRequests.Tmp.Tests.OwnerLifetimeRequest))]
-
-namespace ED.DOTS.EntitiesRequests.Tmp.Tests
+namespace ED.DOTS.EntitiesRequests.Tmp.Tests.Managed
 {
-    /// <summary>Request type of the owner lifetime fixture.</summary>
-    public struct OwnerLifetimeRequest
-    {
-        /// <summary>Payload value.</summary>
-        public int Value;
-    }
-
     /// <summary>
     /// The generated owner dying <b>first</b>, while writer and reader cards are still alive — the
     /// order that used to crash the client build. The owner must close the bank, invalidate the live
@@ -29,21 +20,21 @@ namespace ED.DOTS.EntitiesRequests.Tmp.Tests
         {
             systems.Add(typeof(OwnerWriterSystem));
             systems.Add(typeof(OwnerReaderSystem));
-            systems.Add(typeof(OwnerLifetimeRequest_RequestSystem));
+            systems.Add(typeof(TestRequest_1_RequestSystem));
         }
 
         [Test]
         public void OwnerDestroyedFirst_ClosesBankAndInvalidatesLiveCards()
         {
-            Assert.IsTrue(TryGetBank<OwnerLifetimeRequest>(out _), "setup must create the bank");
+            Assert.IsTrue(TryGetBank<TestRequest_1>(out _), "setup must create the bank");
             Assert.IsTrue(World.GetExistingSystemManaged<OwnerWriterSystem>().IsCardValid);
             Assert.IsTrue(World.GetExistingSystemManaged<OwnerReaderSystem>().IsCardValid);
 
-            DestroyUnmanagedTestSystem<OwnerLifetimeRequest_RequestSystem>();
+            DestroyUnmanagedTestSystem<TestRequest_1_RequestSystem>();
 
-            Assert.That(World.GetExistingSystem<OwnerLifetimeRequest_RequestSystem>(), Is.EqualTo(SystemHandle.Null),
+            Assert.That(World.GetExistingSystem<TestRequest_1_RequestSystem>(), Is.EqualTo(SystemHandle.Null),
                 "the destroyed owner must be gone");
-            Assert.IsFalse(TryGetBank<OwnerLifetimeRequest>(out _), "the owner must have closed the bank");
+            Assert.IsFalse(TryGetBank<TestRequest_1>(out _), "the owner must have closed the bank");
             Assert.IsFalse(World.GetExistingSystemManaged<OwnerWriterSystem>().IsCardValid,
                 "the writer card must be invalidated");
             Assert.IsFalse(World.GetExistingSystemManaged<OwnerReaderSystem>().IsCardValid,
@@ -64,13 +55,13 @@ namespace ED.DOTS.EntitiesRequests.Tmp.Tests
         [DisableAutoCreation]
         public partial class OwnerWriterSystem : SystemBase
         {
-            private RequestWriter<OwnerLifetimeRequest> _writer;
+            private RequestWriter<TestRequest_1> _writer;
 
             public bool IsCardValid => _writer.IsValid;
 
             protected override void OnCreate()
             {
-                _writer = this.GetRequestWriter<OwnerLifetimeRequest>();
+                _writer = this.GetRequestWriter<TestRequest_1>();
             }
 
             protected override void OnDestroy()
@@ -80,20 +71,20 @@ namespace ED.DOTS.EntitiesRequests.Tmp.Tests
 
             protected override void OnUpdate()
             {
-                _writer.Write(new OwnerLifetimeRequest { Value = 1 });
+                _writer.Write(new TestRequest_1 { Value = 1 });
             }
         }
 
         [DisableAutoCreation]
         public partial class OwnerReaderSystem : SystemBase
         {
-            private RequestReader<OwnerLifetimeRequest> _reader;
+            private RequestReader<TestRequest_1> _reader;
 
             public bool IsCardValid => _reader.IsValid;
 
             protected override void OnCreate()
             {
-                _reader = this.GetRequestReader<OwnerLifetimeRequest>();
+                _reader = this.GetRequestReader<TestRequest_1>();
             }
 
             protected override void OnDestroy()

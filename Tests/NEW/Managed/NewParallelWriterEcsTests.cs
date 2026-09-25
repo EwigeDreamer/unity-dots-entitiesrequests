@@ -6,17 +6,8 @@ using Unity.Burst;
 using Unity.Entities;
 using Unity.Jobs;
 
-[assembly: RegisterRequest(typeof(ED.DOTS.EntitiesRequests.Tmp.Tests.ParallelWriterEcsRequest))]
-
-namespace ED.DOTS.EntitiesRequests.Tmp.Tests
+namespace ED.DOTS.EntitiesRequests.Tmp.Tests.Managed
 {
-    /// <summary>Request type of the parallel writer ECS fixture.</summary>
-    public struct ParallelWriterEcsRequest
-    {
-        /// <summary>Payload value.</summary>
-        public int Value;
-    }
-
     /// <summary>
     /// Parallel write from a system and read from a system, in a world. Ported from
     /// <c>ParallelWriterTests</c> ECS case.
@@ -29,7 +20,7 @@ namespace ED.DOTS.EntitiesRequests.Tmp.Tests
         {
             systems.Add(typeof(ParallelWriterTestSystem));
             systems.Add(typeof(ParallelReaderTestSystem));
-            systems.Add(typeof(ParallelWriterEcsRequest_RequestSystem));
+            systems.Add(typeof(TestRequest_1_RequestSystem));
         }
 
         [Test]
@@ -48,11 +39,11 @@ namespace ED.DOTS.EntitiesRequests.Tmp.Tests
         {
             public const int RequestCount = 100;
 
-            private RequestWriter<ParallelWriterEcsRequest> _writer;
+            private RequestWriter<TestRequest_1> _writer;
 
             protected override void OnCreate()
             {
-                _writer = this.GetRequestWriter<ParallelWriterEcsRequest>(RequestCount);
+                _writer = this.GetRequestWriter<TestRequest_1>(RequestCount);
                 _writer.EnsureCapacity(RequestCount);
             }
 
@@ -71,13 +62,13 @@ namespace ED.DOTS.EntitiesRequests.Tmp.Tests
         [DisableAutoCreation]
         public partial class ParallelReaderTestSystem : SystemBase
         {
-            private RequestReader<ParallelWriterEcsRequest> _reader;
+            private RequestReader<TestRequest_1> _reader;
 
             public int ReceivedCount { get; private set; }
 
             protected override void OnCreate()
             {
-                _reader = this.GetRequestReader<ParallelWriterEcsRequest>();
+                _reader = this.GetRequestReader<TestRequest_1>();
             }
 
             protected override void OnDestroy()
@@ -95,11 +86,11 @@ namespace ED.DOTS.EntitiesRequests.Tmp.Tests
         [BurstCompile]
         private struct ParallelWriteJob : IJobParallelFor
         {
-            public RequestWriter<ParallelWriterEcsRequest>.ParallelWriter Writer;
+            public RequestWriter<TestRequest_1>.ParallelWriter Writer;
 
             public void Execute(int index)
             {
-                Writer.WriteNoResize(new ParallelWriterEcsRequest { Value = index });
+                Writer.WriteNoResize(new TestRequest_1 { Value = index });
             }
         }
     }

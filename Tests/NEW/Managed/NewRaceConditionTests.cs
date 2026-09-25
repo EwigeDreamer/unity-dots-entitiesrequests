@@ -6,17 +6,8 @@ using Unity.Burst;
 using Unity.Entities;
 using Unity.Jobs;
 
-[assembly: RegisterRequest(typeof(ED.DOTS.EntitiesRequests.Tmp.Tests.RaceConditionRequest))]
-
-namespace ED.DOTS.EntitiesRequests.Tmp.Tests
+namespace ED.DOTS.EntitiesRequests.Tmp.Tests.Managed
 {
-    /// <summary>Request type of the race condition fixture.</summary>
-    public struct RaceConditionRequest
-    {
-        /// <summary>Payload value.</summary>
-        public int Value;
-    }
-
     /// <summary>
     /// Several parallel writer systems and one synchronous writer feeding the same bank for many
     /// frames. Ported from <c>ParallelWriteRaceConditionTest</c>. Both cases only require the run to
@@ -32,7 +23,7 @@ namespace ED.DOTS.EntitiesRequests.Tmp.Tests
             systems.Add(typeof(AnotherParallelWriterSystem));
             systems.Add(typeof(SingleWriterSystem));
             systems.Add(typeof(ReaderSystem));
-            systems.Add(typeof(RaceConditionRequest_RequestSystem));
+            systems.Add(typeof(TestRequest_1_RequestSystem));
         }
 
         [Test]
@@ -54,9 +45,9 @@ namespace ED.DOTS.EntitiesRequests.Tmp.Tests
         {
             public const int RequestCount = 100;
 
-            private RequestWriter<RaceConditionRequest> _writer;
+            private RequestWriter<TestRequest_1> _writer;
 
-            protected override void OnCreate() => _writer = this.GetRequestWriter<RaceConditionRequest>(RequestCount);
+            protected override void OnCreate() => _writer = this.GetRequestWriter<TestRequest_1>(RequestCount);
             protected override void OnDestroy() => _writer.Dispose();
 
             protected override void OnUpdate()
@@ -71,9 +62,9 @@ namespace ED.DOTS.EntitiesRequests.Tmp.Tests
         {
             public const int RequestCount = 100;
 
-            private RequestWriter<RaceConditionRequest> _writer;
+            private RequestWriter<TestRequest_1> _writer;
 
-            protected override void OnCreate() => _writer = this.GetRequestWriter<RaceConditionRequest>(RequestCount);
+            protected override void OnCreate() => _writer = this.GetRequestWriter<TestRequest_1>(RequestCount);
             protected override void OnDestroy() => _writer.Dispose();
 
             protected override void OnUpdate()
@@ -86,23 +77,23 @@ namespace ED.DOTS.EntitiesRequests.Tmp.Tests
         [DisableAutoCreation]
         public partial class SingleWriterSystem : SystemBase
         {
-            private RequestWriter<RaceConditionRequest> _writer;
+            private RequestWriter<TestRequest_1> _writer;
 
-            protected override void OnCreate() => _writer = this.GetRequestWriter<RaceConditionRequest>();
+            protected override void OnCreate() => _writer = this.GetRequestWriter<TestRequest_1>();
             protected override void OnDestroy() => _writer.Dispose();
 
             protected override void OnUpdate()
             {
-                _writer.Write(new RaceConditionRequest { Value = -1 });
+                _writer.Write(new TestRequest_1 { Value = -1 });
             }
         }
 
         [DisableAutoCreation]
         public partial class ReaderSystem : SystemBase
         {
-            private RequestReader<RaceConditionRequest> _reader;
+            private RequestReader<TestRequest_1> _reader;
 
-            protected override void OnCreate() => _reader = this.GetRequestReader<RaceConditionRequest>();
+            protected override void OnCreate() => _reader = this.GetRequestReader<TestRequest_1>();
             protected override void OnDestroy() => _reader.Dispose();
 
             protected override void OnUpdate()
@@ -117,11 +108,11 @@ namespace ED.DOTS.EntitiesRequests.Tmp.Tests
         [BurstCompile]
         private struct ParallelWriteJob : IJobParallelFor
         {
-            public RequestWriter<RaceConditionRequest>.ParallelWriter Writer;
+            public RequestWriter<TestRequest_1>.ParallelWriter Writer;
 
             public void Execute(int index)
             {
-                Writer.WriteNoResize(new RaceConditionRequest { Value = index });
+                Writer.WriteNoResize(new TestRequest_1 { Value = index });
             }
         }
     }

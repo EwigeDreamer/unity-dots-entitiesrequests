@@ -7,17 +7,8 @@ using Unity.Collections;
 using Unity.Entities;
 using Unity.Jobs;
 
-[assembly: RegisterRequest(typeof(ED.DOTS.EntitiesRequests.Tmp.Tests.DataIntegrityEcsRequest))]
-
-namespace ED.DOTS.EntitiesRequests.Tmp.Tests
+namespace ED.DOTS.EntitiesRequests.Tmp.Tests.Managed
 {
-    /// <summary>Request type of the data integrity ECS fixture.</summary>
-    public struct DataIntegrityEcsRequest
-    {
-        /// <summary>Payload value.</summary>
-        public int Value;
-    }
-
     /// <summary>
     /// Data integrity of a parallel write performed from a system, in a world. Ported from
     /// <c>DataIntegrityTests</c> ECS case.
@@ -30,7 +21,7 @@ namespace ED.DOTS.EntitiesRequests.Tmp.Tests
         {
             systems.Add(typeof(DataIntegrityWriterSystem));
             systems.Add(typeof(DataIntegrityReaderSystem));
-            systems.Add(typeof(DataIntegrityEcsRequest_RequestSystem));
+            systems.Add(typeof(TestRequest_1_RequestSystem));
         }
 
         [Test]
@@ -54,11 +45,11 @@ namespace ED.DOTS.EntitiesRequests.Tmp.Tests
         {
             public const int RequestCount = 800;
 
-            private RequestWriter<DataIntegrityEcsRequest> _writer;
+            private RequestWriter<TestRequest_1> _writer;
 
             protected override void OnCreate()
             {
-                _writer = this.GetRequestWriter<DataIntegrityEcsRequest>(RequestCount);
+                _writer = this.GetRequestWriter<TestRequest_1>(RequestCount);
                 _writer.EnsureCapacity(RequestCount);
             }
 
@@ -77,13 +68,13 @@ namespace ED.DOTS.EntitiesRequests.Tmp.Tests
         [DisableAutoCreation]
         public partial class DataIntegrityReaderSystem : SystemBase
         {
-            private RequestReader<DataIntegrityEcsRequest> _reader;
+            private RequestReader<TestRequest_1> _reader;
 
             public NativeHashSet<int> ReceivedSet;
 
             protected override void OnCreate()
             {
-                _reader = this.GetRequestReader<DataIntegrityEcsRequest>();
+                _reader = this.GetRequestReader<TestRequest_1>();
                 ReceivedSet = new NativeHashSet<int>(1000, Allocator.Persistent);
             }
 
@@ -107,11 +98,11 @@ namespace ED.DOTS.EntitiesRequests.Tmp.Tests
         [BurstCompile]
         private struct ParallelWriteJob : IJobParallelFor
         {
-            public RequestWriter<DataIntegrityEcsRequest>.ParallelWriter Writer;
+            public RequestWriter<TestRequest_1>.ParallelWriter Writer;
 
             public void Execute(int index)
             {
-                Writer.WriteNoResize(new DataIntegrityEcsRequest { Value = index });
+                Writer.WriteNoResize(new TestRequest_1 { Value = index });
             }
         }
     }

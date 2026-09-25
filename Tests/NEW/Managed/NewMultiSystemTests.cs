@@ -5,20 +5,8 @@ using NUnit.Framework;
 using Unity.Collections;
 using Unity.Entities;
 
-[assembly: RegisterRequest(typeof(ED.DOTS.EntitiesRequests.Tmp.Tests.MultiSystemRequest))]
-
-namespace ED.DOTS.EntitiesRequests.Tmp.Tests
+namespace ED.DOTS.EntitiesRequests.Tmp.Tests.Managed
 {
-    /// <summary>Request type of the multi system fixture.</summary>
-    public struct MultiSystemRequest
-    {
-        /// <summary>Payload value.</summary>
-        public int Value;
-
-        /// <summary>Writer that produced the request.</summary>
-        public int WriterId;
-    }
-
     /// <summary>
     /// Several independent writer systems feeding the same bank, with per-test request counts.
     /// Ported from <c>MultiSystemMultiWriterTests</c>. Parameters are configured after setup,
@@ -36,7 +24,7 @@ namespace ED.DOTS.EntitiesRequests.Tmp.Tests
             systems.Add(typeof(WriterSystem2));
             systems.Add(typeof(WriterSystem3));
             systems.Add(typeof(ReaderSystem));
-            systems.Add(typeof(MultiSystemRequest_RequestSystem));
+            systems.Add(typeof(TaggedTestRequest_RequestSystem));
         }
 
         [Test]
@@ -137,16 +125,16 @@ namespace ED.DOTS.EntitiesRequests.Tmp.Tests
             public int WriterId;
             public int RequestCount;
 
-            private RequestWriter<MultiSystemRequest> _writer;
+            private RequestWriter<TaggedTestRequest> _writer;
 
-            protected override void OnCreate() => _writer = this.GetRequestWriter<MultiSystemRequest>();
+            protected override void OnCreate() => _writer = this.GetRequestWriter<TaggedTestRequest>();
             protected override void OnDestroy() => _writer.Dispose();
 
             protected override void OnUpdate()
             {
                 for (var i = 0; i < RequestCount; i++)
                 {
-                    _writer.Write(new MultiSystemRequest { Value = i, WriterId = WriterId });
+                    _writer.Write(new TaggedTestRequest { Value = i, WriterId = WriterId });
                 }
             }
         }
@@ -157,16 +145,16 @@ namespace ED.DOTS.EntitiesRequests.Tmp.Tests
             public int WriterId;
             public int RequestCount;
 
-            private RequestWriter<MultiSystemRequest> _writer;
+            private RequestWriter<TaggedTestRequest> _writer;
 
-            protected override void OnCreate() => _writer = this.GetRequestWriter<MultiSystemRequest>();
+            protected override void OnCreate() => _writer = this.GetRequestWriter<TaggedTestRequest>();
             protected override void OnDestroy() => _writer.Dispose();
 
             protected override void OnUpdate()
             {
                 for (var i = 0; i < RequestCount; i++)
                 {
-                    _writer.Write(new MultiSystemRequest { Value = i, WriterId = WriterId });
+                    _writer.Write(new TaggedTestRequest { Value = i, WriterId = WriterId });
                 }
             }
         }
@@ -177,16 +165,16 @@ namespace ED.DOTS.EntitiesRequests.Tmp.Tests
             public int WriterId;
             public int RequestCount;
 
-            private RequestWriter<MultiSystemRequest> _writer;
+            private RequestWriter<TaggedTestRequest> _writer;
 
-            protected override void OnCreate() => _writer = this.GetRequestWriter<MultiSystemRequest>();
+            protected override void OnCreate() => _writer = this.GetRequestWriter<TaggedTestRequest>();
             protected override void OnDestroy() => _writer.Dispose();
 
             protected override void OnUpdate()
             {
                 for (var i = 0; i < RequestCount; i++)
                 {
-                    _writer.Write(new MultiSystemRequest { Value = i, WriterId = WriterId });
+                    _writer.Write(new TaggedTestRequest { Value = i, WriterId = WriterId });
                 }
             }
         }
@@ -194,14 +182,14 @@ namespace ED.DOTS.EntitiesRequests.Tmp.Tests
         [DisableAutoCreation]
         public partial class ReaderSystem : SystemBase
         {
-            private RequestReader<MultiSystemRequest> _reader;
+            private RequestReader<TaggedTestRequest> _reader;
 
             public NativeHashSet<int> ReceivedValues;
             public int ReceivedCount;
 
             protected override void OnCreate()
             {
-                _reader = this.GetRequestReader<MultiSystemRequest>();
+                _reader = this.GetRequestReader<TaggedTestRequest>();
                 ReceivedValues = new NativeHashSet<int>(10000, Allocator.Persistent);
             }
 

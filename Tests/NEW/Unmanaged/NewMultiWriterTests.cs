@@ -7,24 +7,13 @@ using Unity.Collections;
 using Unity.Entities;
 using Unity.Jobs;
 
-[assembly: RegisterRequest(typeof(ED.DOTS.EntitiesRequests.Tmp.Tests.MultiWriterRequest))]
-
-namespace ED.DOTS.EntitiesRequests.Tmp.Tests
+namespace ED.DOTS.EntitiesRequests.Tmp.Tests.Unmanaged
 {
-    /// <summary>Request type of the multi writer fixture.</summary>
-    public struct MultiWriterRequest
-    {
-        /// <summary>Payload value.</summary>
-        public int Value;
-
-        /// <summary>Writer that produced the request.</summary>
-        public int WriterId;
-    }
-
     /// <summary>
-    /// One synchronous and one parallel writer feeding the same bank. Ported from
-    /// <c>MultiWriterIntegrationTests</c>. Writer parameters are configured after setup, before the
-    /// first update, because the harness creates systems in batch.
+    /// Unmanaged mirror of the managed multi writer fixture: the user systems are
+    /// <see cref="ISystem"/> and every system method is Burst compiled, while the request type and the
+    /// generated owner are shared with the managed set. Writer parameters are configured after setup,
+    /// before the first update, because the harness creates systems in batch.
     /// </summary>
     [TestFixture]
     public sealed class NewMultiWriterTests : RequestTestBase
@@ -35,7 +24,7 @@ namespace ED.DOTS.EntitiesRequests.Tmp.Tests
             systems.Add(typeof(SyncWriterSystem));
             systems.Add(typeof(ParallelWriterSystem));
             systems.Add(typeof(ReaderSystem));
-            systems.Add(typeof(MultiWriterRequest_RequestSystem));
+            systems.Add(typeof(TaggedTestRequest_RequestSystem));
         }
 
         [Test]
@@ -43,17 +32,15 @@ namespace ED.DOTS.EntitiesRequests.Tmp.Tests
         {
             const int writerCount = 300;
 
-            var syncWriter = World.GetExistingSystemManaged<SyncWriterSystem>();
-            syncWriter.WriterId = 1;
-            syncWriter.RequestCount = writerCount;
+            GetTestSystem<SyncWriterSystem>().WriterId = 1;
+            GetTestSystem<SyncWriterSystem>().RequestCount = writerCount;
 
-            var parallelWriter = World.GetExistingSystemManaged<ParallelWriterSystem>();
-            parallelWriter.WriterId = 2;
-            parallelWriter.RequestCount = writerCount;
+            GetTestSystem<ParallelWriterSystem>().WriterId = 2;
+            GetTestSystem<ParallelWriterSystem>().RequestCount = writerCount;
 
             UpdateWorld(2);
 
-            var reader = World.GetExistingSystemManaged<ReaderSystem>();
+            ref var reader = ref GetTestSystem<ReaderSystem>();
             Assert.That(reader.ReceivedCount, Is.EqualTo(writerCount * 2));
             for (var i = 0; i < writerCount; i++)
             {
@@ -63,79 +50,91 @@ namespace ED.DOTS.EntitiesRequests.Tmp.Tests
         }
 
         [DisableAutoCreation]
-        public partial class SyncWriterSystem : SystemBase
+        [BurstCompile]
+        public partial struct SyncWriterSystem : ISystem
         {
             public int WriterId;
             public int RequestCount;
 
-            private RequestWriter<MultiWriterRequest> _writer;
+            private RequestWriter<TaggedTestRequest> _writer;
 
-            protected override void OnCreate()
+            [BurstCompile]
+            public void OnCreate(ref SystemState state)
             {
-                _writer = this.GetRequestWriter<MultiWriterRequest>();
+                _writer = state.GetRequestWriter<TaggedTestRequest>();
             }
 
-            protected override void OnDestroy()
+            [BurstCompile]
+            public void OnDestroy(ref SystemState state)
             {
                 _writer.Dispose();
             }
 
-            protected override void OnUpdate()
+            [BurstCompile]
+            public void OnUpdate(ref SystemState state)
             {
                 for (var i = 0; i < RequestCount; i++)
                 {
-                    _writer.Write(new MultiWriterRequest { Value = i, WriterId = WriterId });
+                    _writer.Write(new TaggedTestRequest { Value = i, WriterId = WriterId });
                 }
             }
         }
 
         [DisableAutoCreation]
-        public partial class ParallelWriterSystem : SystemBase
+        [BurstCompile]
+        public partial struct ParallelWriterSystem : ISystem
         {
             public int WriterId;
             public int RequestCount;
 
-            private RequestWriter<MultiWriterRequest> _writer;
+            private RequestWriter<TaggedTestRequest> _writer;
 
-            protected override void OnCreate()
+            [BurstCompile]
+            public void OnCreate(ref SystemState state)
             {
-                _writer = this.GetRequestWriter<MultiWriterRequest>();
+                _writer = state.GetRequestWriter<TaggedTestRequest>();
             }
 
-            protected override void OnDestroy()
+            [BurstCompile]
+            public void OnDestroy(ref SystemState state)
             {
                 _writer.Dispose();
             }
 
-            protected override void OnUpdate()
+            [BurstCompile]
+            public void OnUpdate(ref SystemState state)
             {
                 _writer.EnsureCapacity(RequestCount);
                 var job = new ParallelWriteJob { Writer = _writer.AsParallelWriter(), WriterId = WriterId };
-                Dependency = job.Schedule(RequestCount, 32, Dependency);
+                state.Dependency = job.Schedule(RequestCount, 32, state.Dependency);
             }
         }
 
         [DisableAutoCreation]
-        public partial class ReaderSystem : SystemBase
+        [BurstCompile]
+        public partial struct ReaderSystem : ISystem
         {
-            private RequestReader<MultiWriterRequest> _reader;
+            private RequestReader<TaggedTestRequest> _reader;
 
             public NativeHashSet<int> ReceivedValues;
             public int ReceivedCount;
 
-            protected override void OnCreate()
+            [BurstCompile]
+            public void OnCreate(ref SystemState state)
             {
-                _reader = this.GetRequestReader<MultiWriterRequest>();
+                _reader = state.GetRequestReader<TaggedTestRequest>();
                 ReceivedValues = new NativeHashSet<int>(10000, Allocator.Persistent);
             }
 
-            protected override void OnDestroy()
+            [BurstCompile]
+            public void OnDestroy(ref SystemState state)
             {
                 ReceivedValues.Dispose();
                 _reader.Dispose();
             }
 
-            protected override void OnUpdate()
+            [BurstCompile]
+            public void OnUpdate(ref SystemState state)
             {
                 ReceivedValues.Clear();
                 ReceivedCount = 0;
@@ -151,12 +150,12 @@ namespace ED.DOTS.EntitiesRequests.Tmp.Tests
         [BurstCompile]
         private struct ParallelWriteJob : IJobParallelFor
         {
-            public RequestWriter<MultiWriterRequest>.ParallelWriter Writer;
+            public RequestWriter<TaggedTestRequest>.ParallelWriter Writer;
             public int WriterId;
 
             public void Execute(int index)
             {
-                Writer.WriteNoResize(new MultiWriterRequest { Value = index, WriterId = WriterId });
+                Writer.WriteNoResize(new TaggedTestRequest { Value = index, WriterId = WriterId });
             }
         }
     }
