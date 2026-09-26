@@ -1,7 +1,7 @@
 using System;
 using Microsoft.CodeAnalysis;
 
-namespace ED.DOTS.EntitiesRequests.SourceGeneratorNew
+namespace ED.DOTS.EntitiesRequests.SourceGenerator
 {
     /// <summary>
     /// Value-equatable description of a registered request type. Identity of the model is
