@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
 using Microsoft.CodeAnalysis;
@@ -109,10 +110,33 @@ namespace ED.DOTS.EntitiesRequests.SourceGenerator
 
         private void Emit(SourceProductionContext context, RequestModel model)
         {
-            var hintName = $"{model.Name}{SystemSuffix}.g.cs";
+            var hintName = $"{model.Name}{SystemSuffix}_{ShortHash(model.FullName)}.g.cs";
             var sourceCode = GenerateCode(model);
             context.AddSource(hintName, SourceText.From(sourceCode, Encoding.UTF8));
             _logger.Info($"{nameof(SourceGenerator)}: generated {hintName} for {model.FullName}.");
+        }
+
+        /// <summary>
+        /// First six bytes of the SHA-256 of the request type's full name, as twelve lowercase hex
+        /// characters. The hint name of a generated file must be unique within a generator, while two
+        /// request types may share the same short name in different namespaces. Hashing the full name
+        /// keeps the file name unique where the short name alone would collide.
+        /// </summary>
+        private static string ShortHash(string fullName)
+        {
+            byte[] bytes;
+            using (var sha = SHA256.Create())
+            {
+                bytes = sha.ComputeHash(Encoding.UTF8.GetBytes(fullName));
+            }
+
+            var builder = new StringBuilder(12);
+            for (var i = 0; i < 6; i++)
+            {
+                builder.Append(bytes[i].ToString("x2"));
+            }
+
+            return builder.ToString();
         }
 
         private static string GenerateCode(RequestModel model)
