@@ -16,13 +16,15 @@ namespace ED.DOTS.EntitiesRequests
         /// <summary>
         /// Declares the write fence on the bank marker and waits for the bank to exist.
         /// The write declaration is what makes owner jobs order after every writer and reader:
-        /// writers declare write access to the marker, readers declare read access, and only a write
-        /// declaration on our side pulls in both fences.
+        /// writers and readers declare read access to the marker, and only a write declaration on our
+        /// side pulls in both fences — the write fence and every read fence.
         /// </summary>
         /// <param name="state">Reference to the system state.</param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static void OnCreate(ref SystemState state)
         {
+            // Resolving the handle declares write access to the marker on this system's state; the
+            // handle itself is unused. The whole mechanism is described in RequestSingleton<T> remarks.
             state.GetComponentTypeHandle<RequestSingleton<T>>();
             state.RequireForUpdate<RequestSingleton<T>>();
         }

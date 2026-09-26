@@ -13,9 +13,10 @@ namespace ED.DOTS.EntitiesRequests
     {
         /// <summary>
         /// Takes a writer card for <typeparamref name="T"/> (Burst path, from an ISystem).
-        /// Creates the bank on the first request and declares write access to
-        /// <see cref="RequestSingleton{T}"/> so that the owner can complete this system's jobs
-        /// before merging the private buffer.
+        /// Creates the bank on the first request and declares <b>read</b> access to
+        /// <see cref="RequestSingleton{T}"/>. A writer touches only its own private buffer, so its job
+        /// needs no ordering against other writers or readers; the owner's write declaration still
+        /// pulls this system's read fence in before merging.
         /// </summary>
         /// <typeparam name="T">Unmanaged request type.</typeparam>
         /// <param name="state">Reference to the system state.</param>
@@ -24,7 +25,10 @@ namespace ED.DOTS.EntitiesRequests
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static RequestWriter<T> GetRequestWriter<T>(this ref SystemState state, int capacity = 64) where T : unmanaged
         {
-            state.GetComponentTypeHandle<RequestSingleton<T>>();
+            // Read access, not write, on purpose: a writer touches only its own buffer, so declaring
+            // write here would needlessly serialize every writer job against the others. The owner's
+            // write declaration pulls this read fence in before the merge.
+            state.GetComponentTypeHandle<RequestSingleton<T>>(true);
             var bank = EntitiesRequestsHelper.GetOrCreateBank<T>(ref state);
             return new RequestWriter<T>(bank, Allocator.Persistent, capacity);
         }
@@ -41,6 +45,7 @@ namespace ED.DOTS.EntitiesRequests
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static RequestReader<T> GetRequestReader<T>(this ref SystemState state) where T : unmanaged
         {
+            // The read-only argument declares read access to the marker; the handle is unused.
             state.GetComponentTypeHandle<RequestSingleton<T>>(true);
             var bank = EntitiesRequestsHelper.GetOrCreateBank<T>(ref state);
             return new RequestReader<T>(bank, Allocator.Persistent);

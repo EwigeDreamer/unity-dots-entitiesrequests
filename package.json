@@ -1,6 +1,6 @@
 {
   "name": "com.ewigedreamer.dots.entitiesrequests",
-  "version": "1.1.2",
+  "version": "2.0.0",
   "displayName": "ED Unity DOTS Entities Requests",
   "description": "Request system for Unity DOTS",
   "unity": "6000.0",

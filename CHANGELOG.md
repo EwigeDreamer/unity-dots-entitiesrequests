@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.0] - 2026-09-26
+
+### Changed
+- **Rewritten from scratch** around a bank/card ownership model: the whole public API changed, see the README.
+- `RequestWriter<T>` / `RequestReader<T>` are cards taken from a bank, and **both** must be disposed by the caller — in v1 only the writer was disposable. The old `Requests<T>` container (`GetWriter` / `GetReader` / `Update`) is gone.
+- The owner of each request type is a generated Burst system that drains pending writes at the end of the simulation phase, so a reader sees the previous tick.
+- Writer cards declare **read** access to the bank marker instead of write, so writer jobs run in parallel rather than serializing against each other; the owner's write declaration still orders the merge after all of them.
+
+### Removed
+- The v1 runtime, generator and test suite.
+
+### Fixed
+- Generated file names are unique per request type (hash of the full type name): two types may share a short name in different namespaces.
+
 ## [1.1.2] - 2026-09-20
 
 ### Changed

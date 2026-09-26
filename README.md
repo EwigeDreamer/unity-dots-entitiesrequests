@@ -6,12 +6,18 @@ A library that adds request‑response style messaging to Unity's Entity Compone
 
 > **Note:** The Entities Requests library implements a **command (many‑to‑one)** communication pattern. Multiple systems can write requests of the same type, but a single consumer system is expected to read and explicitly clear them. Requests persist until cleared, making them suitable for commands, work orders, or any scenario where a request must be reliably processed exactly once.
 
+## Concepts
+* **Bank** — the per‑type container that owns the request buffers. It is created lazily by the first request of a type and closed by the generated owner system.
+* **Card** — a client handle of a bank. `RequestWriter<T>` writes requests into the bank, `RequestReader<T>` reads them; a card is created in `OnCreate` and disposed in `OnDestroy`.
+
 ## Features
 * Reliable inter‑system request passing with `RequestWriter` / `RequestReader`.
 * Requests persist until explicitly cleared by the consuming system.
-* Supports parallel writing from multi‑threaded jobs (`IJobParallelFor`, `IJobParallelForBatch`).
-* Automatic lifecycle management via ECS singletons and generated systems.
-* Source generator eliminates manual request type registration.
+* Parallel writing from multi‑threaded jobs (`IJobParallelFor`, `IJobParallelForBatch`) with a thread‑safe `ParallelWriter`.
+* Fully Burst friendly: the generated request system and its merge job are Burst compiled.
+* Source generator: one assembly attribute per request type emits the system that owns and drains it.
+* Works with both managed (`SystemBase`) and unmanaged (`ISystem`) systems.
+* A self‑contained core that can be used without ECS.
 
 ## Requirements
 * Unity 6000.0 or higher
@@ -36,7 +42,7 @@ public struct MyRequest
 }
 ```
 
-Register the request type with an assembly attribute (generates the required system):
+Register the request type with an assembly attribute. The source generator emits the system that owns the requests of this type:
 
 ```csharp
 using ED.DOTS.EntitiesRequests;
@@ -87,6 +93,11 @@ public partial class ReceiverSystem : SystemBase
         _reader = this.GetRequestReader<MyRequest>();
     }
 
+    protected override void OnDestroy()
+    {
+        _reader.Dispose();
+    }
+
     protected override void OnUpdate()
     {
         foreach (var req in _reader.Read())
@@ -99,9 +110,18 @@ public partial class ReceiverSystem : SystemBase
 }
 ```
 
+> **Note:** The generated owner merges all pending writes at the end of the simulation phase, after `LateSimulationSystemGroup`. A reader that runs during the simulation therefore sees the requests of the **previous tick**, never the current one.
+
+The same extensions are available on `ISystem` for Burst‑compiled systems, taking a `ref SystemState`:
+
+```csharp
+_writer = state.GetRequestWriter<MyRequest>();
+_reader = state.GetRequestReader<MyRequest>();
+```
+
 ## Parallel Writing from Jobs
 
-Use `RequestWriter<T>.ParallelWriter` for writing from multi‑threaded jobs. The writer is thread‑safe and supports both `IJobParallelFor` and `IJobParallelForBatch` with `ScheduleParallel`, allowing many threads to write concurrently without data corruption.
+Use `RequestWriter<T>.ParallelWriter` for writing from multi‑threaded jobs. `WriteNoResize` is thread‑safe and supports both `IJobParallelFor` and `IJobParallelForBatch` with `ScheduleParallel`, allowing many threads to write concurrently without data corruption.
 
 ```csharp
 [BurstCompile]
@@ -116,7 +136,7 @@ struct ParallelJob : IJobParallelFor
 }
 ```
 
-In your system, cache the writer and schedule the job:
+In your system, reserve capacity first and then schedule the job:
 
 ```csharp
 private RequestWriter<MyRequest> _writer;
@@ -129,41 +149,54 @@ protected override void OnCreate()
 
 protected override void OnUpdate()
 {
-    var parallelWriter = _writer.AsParallelWriter();
-    var job = new ParallelJob { Writer = parallelWriter };
+    // WriteNoResize never grows the buffer, so reserve capacity before scheduling
+    _writer.EnsureCapacity(RequestCount);
+
+    var job = new ParallelJob { Writer = _writer.AsParallelWriter() };
     Dependency = job.Schedule(RequestCount, 64, Dependency);
 }
 ```
 
-For batch parallel jobs, use `IJobParallelForBatch` and `ScheduleParallel` — the writer remains safe under high contention.
-
-> **Note:** Each `RequestWriter` owns its own private buffer. Make sure to call `Dispose()` in `OnDestroy` to avoid memory leaks.
-
 ## Manual Usage (Without ECS)
-You can create a `Requests<T>` container directly:
+The core is a plain heap structure and can be used directly, without a world:
 
 ```csharp
-var requests = new Requests<int>(64, Allocator.Persistent);
-var writer = requests.GetWriter();
-var reader = requests.GetReader();
+using ED.DOTS.EntitiesRequests;
+using Unity.Collections;
+
+var bank = new RequestBank<int>(Allocator.Persistent, 128);
+var writer = new RequestWriter<int>(bank, Allocator.Persistent, 128);
+var reader = new RequestReader<int>(bank, Allocator.Persistent);
 
 writer.Write(42);
-requests.Update(); // moves writes to read buffer
+bank.Merge(); // moves every pending write into the shared read buffer
 
-foreach (int val in reader.Read())
+foreach (var value in reader.Read())
 {
-    Debug.Log(val); // 42
+    Debug.Log(value); // 42
 }
 reader.Clear(); // explicit clear
 
 writer.Dispose();
-requests.Dispose();
+reader.Dispose();
+bank.Dispose();
 ```
+
+The bank owns its buffers and is created first. Each card allocates its own memory from the allocator you pass to it and frees it on `Dispose`, so a card safely outlives the bank; that allocator must outlive the card. `Merge` must run in a job‑free window.
+
+## Notes and Semantics
+* The pattern is **many‑to‑one**: many writers, one reader per request type. For one‑to‑many fan‑out use the sibling EntitiesEvents package.
+* Requests accumulate in a shared read buffer and stay there until you call `Clear()`.
+* Register each request type **exactly once** with `[assembly: RegisterRequest(typeof(T))]`. Registering the same type twice fails the build; different request types may share a short name across namespaces.
+* Take cards in `OnCreate` and dispose them in `OnDestroy`. Taking a card in `OnUpdate` is not supported.
+* If the request type is registered but its generated owner is not present in this world, the bank is not created: taking a card yields a logged no‑op instead of a bank nobody would ever close.
+* The `[assembly: RegisterRequest(typeof(T))]` attribute is mandatory. Without it the request marker component is never registered, the engine cannot resolve it, and taking a card throws — there is no graceful fallback.
+* A parallel writer never resizes its buffer: reserve capacity with `EnsureCapacity` before scheduling the job that writes through it.
 
 ## Performance Considerations
 * Cache `RequestWriter` and `RequestReader` in `OnCreate` – they safely reference internal buffers.
-  Always provide an appropriate `initialCapacity` when creating a writer to avoid reallocations (especially for parallel writes).
-  Always call `Dispose()` on your `RequestWriter` (in system `OnDestroy`) to free its private buffer and unregister it.
+  Always call `Dispose()` on your cards (in system `OnDestroy`) to free their blocks.
+* Reserve capacity with `EnsureCapacity` before parallel writes to avoid reallocations.
 * Call `Clear()` on the reader as soon as processing is done to avoid accumulating stale requests.
 
 ## License
@@ -171,6 +204,6 @@ requests.Dispose();
 [MIT License](LICENSE.md)
 
 ## Acknowledgements
-This project was inspired by the original [EntitiesEvents](https://github.com/annulusgames/EntitiesEvents) concept by [annulusgames](https://github.com/annulusgames), but has been completely rewritten to support multiple independent writer buffers, explicit resource disposal, and safe mixed sync/parallel writing.
+This project was inspired by the original [EntitiesEvents](https://github.com/annulusgames/EntitiesEvents) concept by [annulusgames](https://github.com/annulusgames), but has been completely rewritten around an independent writer/reader ownership model, explicit disposal, and Burst‑compiled drain systems.
 
 Created with the support of artificial intelligence.
