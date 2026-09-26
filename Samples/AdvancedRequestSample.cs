@@ -1,86 +1,81 @@
-﻿using Unity.Burst;
+﻿using ED.DOTS.EntitiesRequests;
+using Unity.Burst;
 using Unity.Entities;
 using Unity.Jobs;
-using Unity.Collections;
 using UnityEngine;
-using ED.DOTS.EntitiesRequests;
 
-// Register the request type for source generation
+// Register the request type. The source generator emits its owner system into this assembly.
 [assembly: RegisterRequest(typeof(ED.DOTS.EntitiesRequests.Samples.AdvancedRequest))]
 
 namespace ED.DOTS.EntitiesRequests.Samples
 {
-    /// <summary>
-    /// Request structure for the advanced parallel write example.
-    /// </summary>
+    /// <summary>Request used by the advanced parallel write example.</summary>
     public struct AdvancedRequest
     {
+        /// <summary>Index of the request inside the scheduled batch.</summary>
         public int Index;
     }
 
     /// <summary>
-    /// Unmanaged system that schedules a parallel batch job to write requests when P is pressed.
+    /// Schedules a parallel write on every P press. The system itself stays managed: reading legacy
+    /// <see cref="Input"/> is not Burst compatible, while the job that actually writes the requests
+    /// is, so the hot path keeps its Burst compilation.
     /// </summary>
-    [BurstCompile]
     [UpdateInGroup(typeof(SimulationSystemGroup))]
+    [WorldSystemFilter(WorldSystemFilterFlags.ClientSimulation
+                       | WorldSystemFilterFlags.ServerSimulation
+                       | WorldSystemFilterFlags.LocalSimulation)]
     public partial struct AdvancedRequestSenderSystem : ISystem
     {
-        private RequestWriter<AdvancedRequest> _writer;
         private const int RequestCount = 1000;
 
-        [BurstCompile]
+        private RequestWriter<AdvancedRequest> _writer;
+
         public void OnCreate(ref SystemState state)
         {
             _writer = state.GetRequestWriter<AdvancedRequest>(RequestCount);
         }
 
-        [BurstCompile]
         public void OnDestroy(ref SystemState state)
         {
             _writer.Dispose();
         }
 
-        [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
             if (Input.GetKeyDown(KeyCode.P))
             {
-                var parallelWriter = _writer.AsParallelWriter();
-                var job = new ParallelWriteBatchJob
-                {
-                    Writer = parallelWriter
-                };
+                // WriteNoResize never grows the buffer, so reserve capacity before scheduling the job.
+                _writer.EnsureCapacity(RequestCount);
 
-                state.Dependency = job.ScheduleParallel(RequestCount, 64, state.Dependency);
-                Debug.Log($"[Sender] Scheduled parallel batch job to write {RequestCount} requests.");
+                var job = new ParallelWriteJob { Writer = _writer.AsParallelWriter() };
+                state.Dependency = job.Schedule(RequestCount, 64, state.Dependency);
+                Debug.Log($"[Advanced] Scheduled a parallel write of {RequestCount} requests.");
             }
         }
 
-        /// <summary>
-        /// Parallel batch job that writes requests using RequestWriter.ParallelWriter.
-        /// </summary>
+        /// <summary>Writes one request per index through the writer's parallel view.</summary>
         [BurstCompile]
-        private struct ParallelWriteBatchJob : IJobParallelForBatch
+        private struct ParallelWriteJob : IJobParallelFor
         {
             public RequestWriter<AdvancedRequest>.ParallelWriter Writer;
 
-            public void Execute(int startIndex, int count)
+            public void Execute(int index)
             {
-                for (int i = 0; i < count; i++)
-                {
-                    int index = startIndex + i;
-                    Writer.WriteNoResize(new AdvancedRequest { Index = index });
-                }
+                Writer.WriteNoResize(new AdvancedRequest { Index = index });
             }
         }
     }
 
     /// <summary>
-    /// System that reads AdvancedRequest in the next frame and logs summary.
+    /// Reads whatever the previous tick merged and logs the summary. The reader is Burst compiled:
+    /// iterating the read span and clearing the buffer are both Burst safe.
     /// </summary>
     [BurstCompile]
     [UpdateInGroup(typeof(SimulationSystemGroup))]
-    [UpdateAfter(typeof(AdvancedRequestSenderSystem))]
+    [WorldSystemFilter(WorldSystemFilterFlags.ClientSimulation
+                       | WorldSystemFilterFlags.ServerSimulation
+                       | WorldSystemFilterFlags.LocalSimulation)]
     public partial struct AdvancedRequestReceiverSystem : ISystem
     {
         private RequestReader<AdvancedRequest> _reader;
@@ -92,23 +87,30 @@ namespace ED.DOTS.EntitiesRequests.Samples
         }
 
         [BurstCompile]
+        public void OnDestroy(ref SystemState state)
+        {
+            _reader.Dispose();
+        }
+
+        [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
-            int count = 0;
-            int min = int.MaxValue;
-            int max = int.MinValue;
+            var count = 0;
+            var min = int.MaxValue;
+            var max = int.MinValue;
 
-            foreach (var req in _reader.Read())
+            foreach (var request in _reader.Read())
             {
                 count++;
-                if (req.Index < min) min = req.Index;
-                if (req.Index > max) max = req.Index;
+                if (request.Index < min) min = request.Index;
+                if (request.Index > max) max = request.Index;
             }
+
             _reader.Clear();
 
             if (count > 0)
             {
-                Debug.Log($"[Receiver] Received {count} AdvancedRequests. Min index: {min}, Max index: {max}");
+                Debug.Log($"[Advanced] Received {count} requests. Min index: {min}, Max index: {max}");
             }
         }
     }

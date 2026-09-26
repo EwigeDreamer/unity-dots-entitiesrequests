@@ -1,26 +1,26 @@
-﻿using UnityEngine;
+﻿using ED.DOTS.EntitiesRequests;
 using Unity.Collections;
-using ED.DOTS.EntitiesRequests;
+using UnityEngine;
 
 namespace ED.DOTS.EntitiesRequests.Samples
 {
     /// <summary>
-    /// Example of manual request handling without ECS systems.
-    /// Creates a Requests container, writes values on key press, and manually updates/reads/clears.
+    /// Drives a request bank by hand, without ECS. The core is a plain heap structure, so it can be
+    /// used from any MonoBehaviour: W writes, R merges and reads, then clears.
     /// </summary>
     public class ManualRequestSample : MonoBehaviour
     {
-        private Requests<int> _requests;
+        private RequestBank<int> _bank;
         private RequestWriter<int> _writer;
         private RequestReader<int> _reader;
         private int _counter;
 
         private void Start()
         {
-            _requests = new Requests<int>(128, Allocator.Persistent);
-            _writer = _requests.GetWriter(128);
-            _reader = _requests.GetReader();
-            _counter = 0;
+            // The allocator is up to the caller; the bank owns its buffers until it is disposed.
+            _bank = new RequestBank<int>(Allocator.Persistent, 128);
+            _writer = new RequestWriter<int>(_bank, 128);
+            _reader = new RequestReader<int>(_bank);
         }
 
         private void Update()
@@ -28,38 +28,38 @@ namespace ED.DOTS.EntitiesRequests.Samples
             if (Input.GetKeyDown(KeyCode.W))
             {
                 _writer.Write(_counter);
-                Debug.Log($"[Manual] Wrote request: {_counter}");
+                Debug.Log($"[Manual] Wrote a request: {_counter}");
                 _counter++;
             }
 
             if (Input.GetKeyDown(KeyCode.R))
             {
-                // Move pending writes to read buffer
-                _requests.Update();
+                // Merge moves every pending write into the shared read buffer. It must run in a
+                // job-free window; a MonoBehaviour update is one.
+                _bank.Merge();
 
-                int sum = 0;
-                int count = 0;
-                foreach (int value in _reader.Read())
+                var sum = 0;
+                var count = 0;
+                foreach (var value in _reader.Read())
                 {
-                    Debug.Log($"[Manual] Read request: {value}");
+                    Debug.Log($"[Manual] Read a request: {value}");
                     sum += value;
                     count++;
                 }
 
-                Debug.Log($"[Manual] Total after Update: {count} requests, sum = {sum}");
+                Debug.Log($"[Manual] Merged {count} requests, sum = {sum}");
 
-                // Explicitly clear the read buffer after processing
+                // The read buffer is shared and persists until cleared.
                 _reader.Clear();
             }
         }
 
         private void OnDestroy()
         {
-            if (_requests.IsCreated)
-            {
-                _writer.Dispose();
-                _requests.Dispose();
-            }
+            // Disposal order does not matter: a disposed bank invalidates its cards silently.
+            _writer.Dispose();
+            _reader.Dispose();
+            _bank.Dispose();
         }
     }
 }
