@@ -7,8 +7,8 @@ using UnityEngine;
 namespace ED.DOTS.EntitiesRequests
 {
     /// <summary>
-    /// Client handle of a writer card: allocates the card block with the bank allocator and
-    /// registers it. Disposal is silent even when the card was never created.
+    /// Client handle of a writer card: allocates the card block with the client allocator and
+    /// registers it with the bank. Disposal is silent even when the card was never created.
     /// </summary>
     /// <typeparam name="T">Unmanaged request type.</typeparam>
     public unsafe struct RequestWriter<T> : IDisposable where T : unmanaged
@@ -19,10 +19,15 @@ namespace ED.DOTS.EntitiesRequests
         private AllocatorManager.AllocatorHandle _allocator;
 
         /// <summary>
-        /// Creates and registers a writer card. When the bank is not created the card is not
-        /// allocated at all: every operation becomes a logged no-op and disposal does nothing.
+        /// Creates and registers a writer card. The card block is allocated with
+        /// <paramref name="allocator"/>: the client owns the block and frees it on disposal,
+        /// independently of the bank. When the bank is not created the card is not allocated at all —
+        /// every operation becomes a logged no-op and disposal does nothing.
         /// </summary>
-        public RequestWriter(RequestBank<T> bank, int capacity = 64)
+        /// <param name="bank">Bank of the request type; it allocates and owns the writer's private buffer.</param>
+        /// <param name="allocator">Allocator of the card block; must outlive the card.</param>
+        /// <param name="capacity">Initial capacity of the writer's private buffer.</param>
+        public RequestWriter(RequestBank<T> bank, AllocatorManager.AllocatorHandle allocator, int capacity = 64)
         {
             var bankData = bank.Data;
             if (bankData == null)
@@ -32,7 +37,7 @@ namespace ED.DOTS.EntitiesRequests
                 return;
             }
 
-            _allocator = bankData->_allocator;
+            _allocator = allocator;
             _data = (CardData<T>*)AllocatorManager.Allocate(_allocator, UnsafeUtility.SizeOf<CardData<T>>(), UnsafeUtility.AlignOf<CardData<T>>(), 1);
             bankData->RegisterWriter(_data, capacity);
         }

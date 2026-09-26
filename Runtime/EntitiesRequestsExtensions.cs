@@ -1,4 +1,5 @@
 using System.Runtime.CompilerServices;
+using Unity.Collections;
 using Unity.Entities;
 
 namespace ED.DOTS.EntitiesRequests
@@ -25,7 +26,7 @@ namespace ED.DOTS.EntitiesRequests
         {
             state.GetComponentTypeHandle<RequestSingleton<T>>();
             var bank = EntitiesRequestsHelper.GetOrCreateBank<T>(ref state);
-            return new RequestWriter<T>(bank, capacity);
+            return new RequestWriter<T>(bank, Allocator.Persistent, capacity);
         }
 
         /// <summary>
@@ -42,7 +43,7 @@ namespace ED.DOTS.EntitiesRequests
         {
             state.GetComponentTypeHandle<RequestSingleton<T>>(true);
             var bank = EntitiesRequestsHelper.GetOrCreateBank<T>(ref state);
-            return new RequestReader<T>(bank);
+            return new RequestReader<T>(bank, Allocator.Persistent);
         }
 
         /// <summary>

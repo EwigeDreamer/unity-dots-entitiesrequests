@@ -8,7 +8,8 @@ namespace ED.DOTS.EntitiesRequests
     /// <summary>
     /// Shared heap state of a request bank for <typeparamref name="T"/>.
     /// Allocates and owns the read buffer and every writer buffer; card blocks are allocated by
-    /// clients and only wired up here. Never allocates itself — its block belongs to RequestBank.
+    /// clients from their own allocators and only wired up here. Never allocates itself — its block
+    /// belongs to RequestBank.
     /// </summary>
     /// <typeparam name="T">Unmanaged request type.</typeparam>
     internal unsafe struct BankData<T> : IDisposable where T : unmanaged

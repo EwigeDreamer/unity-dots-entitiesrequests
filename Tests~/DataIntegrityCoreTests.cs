@@ -54,8 +54,8 @@ namespace ED.DOTS.EntitiesRequests.Tests
             const int requestCount = 500;
 
             var bank = new RequestBank<DataIntegrityCoreRequest>(Allocator.Persistent, requestCount);
-            var writer = new RequestWriter<DataIntegrityCoreRequest>(bank, requestCount);
-            var reader = new RequestReader<DataIntegrityCoreRequest>(bank);
+            var writer = new RequestWriter<DataIntegrityCoreRequest>(bank, Allocator.Persistent, requestCount);
+            var reader = new RequestReader<DataIntegrityCoreRequest>(bank, Allocator.Persistent);
 
             for (var i = 0; i < requestCount; i++)
             {
@@ -87,8 +87,8 @@ namespace ED.DOTS.EntitiesRequests.Tests
             const int requestCount = 1000;
 
             var bank = new RequestBank<DataIntegrityCoreRequest>(Allocator.Persistent, requestCount);
-            var writer = new RequestWriter<DataIntegrityCoreRequest>(bank, requestCount);
-            var reader = new RequestReader<DataIntegrityCoreRequest>(bank);
+            var writer = new RequestWriter<DataIntegrityCoreRequest>(bank, Allocator.Persistent, requestCount);
+            var reader = new RequestReader<DataIntegrityCoreRequest>(bank, Allocator.Persistent);
             writer.EnsureCapacity(requestCount);
 
             var job = new ParallelWriteJob { Writer = writer.AsParallelWriter() };
@@ -120,8 +120,8 @@ namespace ED.DOTS.EntitiesRequests.Tests
             const int batchSize = 64;
 
             var bank = new RequestBank<DataIntegrityCoreRequest>(Allocator.Persistent, totalCount);
-            var writer = new RequestWriter<DataIntegrityCoreRequest>(bank, totalCount);
-            var reader = new RequestReader<DataIntegrityCoreRequest>(bank);
+            var writer = new RequestWriter<DataIntegrityCoreRequest>(bank, Allocator.Persistent, totalCount);
+            var reader = new RequestReader<DataIntegrityCoreRequest>(bank, Allocator.Persistent);
             writer.EnsureCapacity(totalCount);
 
             var job = new ParallelForBatchWriteJob { Writer = writer.AsParallelWriter() };

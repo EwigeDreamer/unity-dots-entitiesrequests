@@ -7,9 +7,9 @@ using UnityEngine;
 namespace ED.DOTS.EntitiesRequests
 {
     /// <summary>
-    /// Client handle of a reader card: allocates the card block with the bank allocator and
-    /// registers it. Reads from the shared read buffer, which must be cleared after processing.
-    /// Disposal is silent even when the card was never created.
+    /// Client handle of a reader card: allocates the card block with the client allocator and
+    /// registers it with the bank. Reads from the shared read buffer, which must be cleared after
+    /// processing. Disposal is silent even when the card was never created.
     /// </summary>
     /// <typeparam name="T">Unmanaged request type.</typeparam>
     public unsafe struct RequestReader<T> : IDisposable where T : unmanaged
@@ -20,10 +20,14 @@ namespace ED.DOTS.EntitiesRequests
         private AllocatorManager.AllocatorHandle _allocator;
 
         /// <summary>
-        /// Creates and registers a reader card. When the bank is not created the card is not
-        /// allocated at all: every operation becomes a logged no-op and disposal does nothing.
+        /// Creates and registers a reader card. The card block is allocated with
+        /// <paramref name="allocator"/>: the client owns the block and frees it on disposal,
+        /// independently of the bank. When the bank is not created the card is not allocated at all —
+        /// every operation becomes a logged no-op and disposal does nothing.
         /// </summary>
-        public RequestReader(RequestBank<T> bank)
+        /// <param name="bank">Bank of the request type; its read buffer is aliased by the card.</param>
+        /// <param name="allocator">Allocator of the card block; must outlive the card.</param>
+        public RequestReader(RequestBank<T> bank, AllocatorManager.AllocatorHandle allocator)
         {
             var bankData = bank.Data;
             if (bankData == null)
@@ -33,7 +37,7 @@ namespace ED.DOTS.EntitiesRequests
                 return;
             }
 
-            _allocator = bankData->_allocator;
+            _allocator = allocator;
             _data = (CardData<T>*)AllocatorManager.Allocate(_allocator, UnsafeUtility.SizeOf<CardData<T>>(), UnsafeUtility.AlignOf<CardData<T>>(), 1);
             bankData->RegisterReader(_data);
         }

@@ -39,8 +39,8 @@ namespace ED.DOTS.EntitiesRequests.Tests
             const int requestCount = 1000;
 
             var bank = new RequestBank<ParallelWriterCoreRequest>(Allocator.Persistent, requestCount);
-            var writer = new RequestWriter<ParallelWriterCoreRequest>(bank, requestCount);
-            var reader = new RequestReader<ParallelWriterCoreRequest>(bank);
+            var writer = new RequestWriter<ParallelWriterCoreRequest>(bank, Allocator.Persistent, requestCount);
+            var reader = new RequestReader<ParallelWriterCoreRequest>(bank, Allocator.Persistent);
             writer.EnsureCapacity(requestCount);
 
             var job = new ParallelWriteJob { Writer = writer.AsParallelWriter() };
@@ -61,8 +61,8 @@ namespace ED.DOTS.EntitiesRequests.Tests
             const int requestCount = 100;
 
             var bank = new RequestBank<ParallelWriterCoreRequest>(Allocator.Persistent, requestCount);
-            var writer = new RequestWriter<ParallelWriterCoreRequest>(bank, requestCount);
-            var reader = new RequestReader<ParallelWriterCoreRequest>(bank);
+            var writer = new RequestWriter<ParallelWriterCoreRequest>(bank, Allocator.Persistent, requestCount);
+            var reader = new RequestReader<ParallelWriterCoreRequest>(bank, Allocator.Persistent);
             writer.EnsureCapacity(requestCount);
 
             var job = new ParallelWriteJob { Writer = writer.AsParallelWriter() };

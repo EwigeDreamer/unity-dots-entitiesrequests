@@ -35,8 +35,8 @@ namespace ED.DOTS.EntitiesRequests.Tests
         public void WriteAndRead_SameFrame_ReadsNothing()
         {
             var bank = new RequestBank<CoreTestRequest>(Allocator.Persistent, 16);
-            var writer = new RequestWriter<CoreTestRequest>(bank, 64);
-            var reader = new RequestReader<CoreTestRequest>(bank);
+            var writer = new RequestWriter<CoreTestRequest>(bank, Allocator.Persistent, 64);
+            var reader = new RequestReader<CoreTestRequest>(bank, Allocator.Persistent);
 
             writer.Write(new CoreTestRequest { Value = 42 });
 
@@ -51,8 +51,8 @@ namespace ED.DOTS.EntitiesRequests.Tests
         public void WriteThenMerge_ThenRead_ReturnsRequests()
         {
             var bank = new RequestBank<CoreTestRequest>(Allocator.Persistent, 16);
-            var writer = new RequestWriter<CoreTestRequest>(bank, 64);
-            var reader = new RequestReader<CoreTestRequest>(bank);
+            var writer = new RequestWriter<CoreTestRequest>(bank, Allocator.Persistent, 64);
+            var reader = new RequestReader<CoreTestRequest>(bank, Allocator.Persistent);
 
             writer.Write(new CoreTestRequest { Value = 1 });
             writer.Write(new CoreTestRequest { Value = 2 });
@@ -73,8 +73,8 @@ namespace ED.DOTS.EntitiesRequests.Tests
         public void MultipleWrites_ReadAll_InOrder()
         {
             var bank = new RequestBank<CoreTestRequest>(Allocator.Persistent, 16);
-            var writer = new RequestWriter<CoreTestRequest>(bank, 100);
-            var reader = new RequestReader<CoreTestRequest>(bank);
+            var writer = new RequestWriter<CoreTestRequest>(bank, Allocator.Persistent, 100);
+            var reader = new RequestReader<CoreTestRequest>(bank, Allocator.Persistent);
 
             for (var i = 0; i < 100; i++)
             {
@@ -99,8 +99,8 @@ namespace ED.DOTS.EntitiesRequests.Tests
         public void Merge_ClearsWriteBuffer()
         {
             var bank = new RequestBank<CoreTestRequest>(Allocator.Persistent, 16);
-            var writer = new RequestWriter<CoreTestRequest>(bank, 64);
-            var reader = new RequestReader<CoreTestRequest>(bank);
+            var writer = new RequestWriter<CoreTestRequest>(bank, Allocator.Persistent, 64);
+            var reader = new RequestReader<CoreTestRequest>(bank, Allocator.Persistent);
 
             Assert.That(reader.Read().Length, Is.EqualTo(0));
 
@@ -132,8 +132,8 @@ namespace ED.DOTS.EntitiesRequests.Tests
         public void CachedWriterAndReader_WorkAcrossMerges()
         {
             var bank = new RequestBank<CoreTestRequest>(Allocator.Persistent, 16);
-            var writer = new RequestWriter<CoreTestRequest>(bank, 64);
-            var reader = new RequestReader<CoreTestRequest>(bank);
+            var writer = new RequestWriter<CoreTestRequest>(bank, Allocator.Persistent, 64);
+            var reader = new RequestReader<CoreTestRequest>(bank, Allocator.Persistent);
 
             writer.Write(new CoreTestRequest { Value = 100 });
             bank.Merge();

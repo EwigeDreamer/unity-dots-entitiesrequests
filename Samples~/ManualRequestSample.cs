@@ -17,10 +17,11 @@ namespace ED.DOTS.EntitiesRequests.Samples
 
         private void Start()
         {
-            // The allocator is up to the caller; the bank owns its buffers until it is disposed.
+            // The bank owns its buffers; each card is allocated from the allocator the caller passes
+            // and freed when the card is disposed, independently of the bank.
             _bank = new RequestBank<int>(Allocator.Persistent, 128);
-            _writer = new RequestWriter<int>(_bank, 128);
-            _reader = new RequestReader<int>(_bank);
+            _writer = new RequestWriter<int>(_bank, Allocator.Persistent, 128);
+            _reader = new RequestReader<int>(_bank, Allocator.Persistent);
         }
 
         private void Update()

@@ -48,8 +48,8 @@ namespace ED.DOTS.EntitiesRequests.Tests
         public unsafe void BankDisposed_WhileCardsAlive_CardsBecomeInvalid()
         {
             var bank = new RequestBank<BankLifetimeRequest>(Alloc.Handle, 16);
-            var writer = new RequestWriter<BankLifetimeRequest>(bank, 16);
-            var reader = new RequestReader<BankLifetimeRequest>(bank);
+            var writer = new RequestWriter<BankLifetimeRequest>(bank, Alloc.Handle, 16);
+            var reader = new RequestReader<BankLifetimeRequest>(bank, Alloc.Handle);
             var bankBlock = (IntPtr)bank.Data;
 
             bank.Dispose();
@@ -82,8 +82,8 @@ namespace ED.DOTS.EntitiesRequests.Tests
         public void CardsDisposedFirst_ThenBank_NoDoubleFree()
         {
             var bank = new RequestBank<BankLifetimeRequest>(Alloc.Handle, 16);
-            var writer = new RequestWriter<BankLifetimeRequest>(bank, 16);
-            var reader = new RequestReader<BankLifetimeRequest>(bank);
+            var writer = new RequestWriter<BankLifetimeRequest>(bank, Alloc.Handle, 16);
+            var reader = new RequestReader<BankLifetimeRequest>(bank, Alloc.Handle);
 
             writer.Dispose();
             reader.Dispose();
