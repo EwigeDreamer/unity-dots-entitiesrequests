@@ -1,6 +1,7 @@
 using System.Runtime.CompilerServices;
 using Unity.Collections;
 using Unity.Entities;
+using UnityEngine;
 
 namespace ED.DOTS.EntitiesRequests.Tmp
 {
@@ -15,10 +16,16 @@ namespace ED.DOTS.EntitiesRequests.Tmp
         /// <summary>
         /// Returns the existing bank of <typeparamref name="T"/>, or creates one together with its
         /// singleton entity. The bank lives until its owner disposes it.
+        /// <para>
+        /// Creation is refused when this world cannot host the bank, that is when the request type
+        /// was never registered (its owner index is unpublished), or when the generated owner is not
+        /// part of this world. Both cases log an error and return an uncreated bank, which turns
+        /// every card into a logged no-op instead of leaking a bank nobody would ever close.
+        /// </para>
         /// </summary>
         /// <typeparam name="T">Unmanaged request type.</typeparam>
         /// <param name="state">Reference to the system state.</param>
-        /// <returns>The bank of this request type.</returns>
+        /// <returns>The bank of this request type, or an uncreated one when creation is refused.</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static RequestBank<T> GetOrCreateBank<T>(ref SystemState state) where T : unmanaged
         {
@@ -27,6 +34,19 @@ namespace ED.DOTS.EntitiesRequests.Tmp
             if (query.TryGetSingleton<RequestSingleton<T>>(out var singleton))
             {
                 return singleton.Bank;
+            }
+
+            var ownerIndex = RequestBridge<T>.Read();
+            if (ownerIndex == SystemTypeIndex.Null)
+            {
+                Debug.LogError("[Requests] Request bank not created: the owner index of the request type was not published. The type is likely missing [assembly: RegisterRequest(typeof(...))].");
+                return default;
+            }
+
+            if (state.WorldUnmanaged.GetExistingUnmanagedSystem(ownerIndex) == SystemHandle.Null)
+            {
+                Debug.LogError("[Requests] Request bank not created: the owner system of the request type is not present in this world.");
+                return default;
             }
 
             var bank = new RequestBank<T>(Allocator.Persistent, ReadCapacity);

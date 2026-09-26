@@ -11,7 +11,8 @@ namespace ED.DOTS.EntitiesRequests.SourceGeneratorNew
     /// <summary>
     /// Incremental source generator for the new requests core (namespace <c>ED.DOTS.EntitiesRequests.Tmp</c>).
     /// For every type registered with <c>[assembly: RegisterRequest(typeof(T))]</c> it emits the closed
-    /// generic component and generic job registrations plus a request system into the very assembly
+    /// generic component and generic job registrations, a request system and a runtime-init hook that
+    /// publishes the owner system index through <c>RequestBridge&lt;T&gt;</c>, all into the very assembly
     /// that declared the attribute.
     /// </summary>
     [Generator]
@@ -22,6 +23,15 @@ namespace ED.DOTS.EntitiesRequests.SourceGeneratorNew
 
         /// <summary>Suffix of the generated per-type request system.</summary>
         private const string SystemSuffix = "_RequestSystem";
+
+        /// <summary>Suffix of the generated runtime-init class that publishes the owner index bridge.</summary>
+        private const string BridgeInitSuffix = "_RequestBridgeInit";
+
+        /// <summary>
+        /// Namespace of the new core. Generated code qualifies every core type with it, so a consumer
+        /// type of the same short name, declared in the request type's namespace, cannot shadow it.
+        /// </summary>
+        private const string CoreNamespace = "ED.DOTS.EntitiesRequests.Tmp";
 
         private readonly FileLogger _logger = new FileLogger("EntitiesRequestsNEW");
 
@@ -116,10 +126,10 @@ namespace ED.DOTS.EntitiesRequests.SourceGeneratorNew
             builder.AppendLine("using Unity.Burst;");
             builder.AppendLine("using Unity.Entities;");
             builder.AppendLine("using Unity.Jobs;");
-            builder.AppendLine("using ED.DOTS.EntitiesRequests.Tmp;");
+            builder.AppendLine("using UnityEngine;");
             builder.AppendLine();
-            builder.AppendLine($"[assembly: RegisterGenericComponentType(typeof(RequestSingleton<{model.FullName}>))]");
-            builder.AppendLine($"[assembly: RegisterGenericJobType(typeof(MergeRequestsJob<{model.FullName}>))]");
+            builder.AppendLine($"[assembly: RegisterGenericComponentType(typeof({CoreNamespace}.RequestSingleton<{model.FullName}>))]");
+            builder.AppendLine($"[assembly: RegisterGenericJobType(typeof({CoreNamespace}.MergeRequestsJob<{model.FullName}>))]");
             builder.AppendLine();
 
             if (hasNamespace)
@@ -128,7 +138,7 @@ namespace ED.DOTS.EntitiesRequests.SourceGeneratorNew
                 builder.AppendLine("{");
             }
 
-            builder.AppendLine($"{indent}[UpdateInGroup(typeof(RequestSystemGroup))]");
+            builder.AppendLine($"{indent}[UpdateInGroup(typeof({CoreNamespace}.RequestSystemGroup))]");
             builder.AppendLine($"{indent}[WorldSystemFilter(WorldSystemFilterFlags.ClientSimulation");
             builder.AppendLine($"{indent}                   | WorldSystemFilterFlags.ServerSimulation");
             builder.AppendLine($"{indent}                   | WorldSystemFilterFlags.LocalSimulation)]");
@@ -138,19 +148,32 @@ namespace ED.DOTS.EntitiesRequests.SourceGeneratorNew
             builder.AppendLine($"{indent}    [BurstCompile]");
             builder.AppendLine($"{indent}    public void OnCreate(ref SystemState state)");
             builder.AppendLine($"{indent}    {{");
-            builder.AppendLine($"{indent}        RequestOwner<{model.FullName}>.OnCreate(ref state);");
+            builder.AppendLine($"{indent}        {CoreNamespace}.RequestOwner<{model.FullName}>.OnCreate(ref state);");
             builder.AppendLine($"{indent}    }}");
             builder.AppendLine();
             builder.AppendLine($"{indent}    [BurstCompile]");
             builder.AppendLine($"{indent}    public void OnUpdate(ref SystemState state)");
             builder.AppendLine($"{indent}    {{");
-            builder.AppendLine($"{indent}        RequestOwner<{model.FullName}>.OnUpdate(ref state);");
+            builder.AppendLine($"{indent}        {CoreNamespace}.RequestOwner<{model.FullName}>.OnUpdate(ref state);");
             builder.AppendLine($"{indent}    }}");
             builder.AppendLine();
             builder.AppendLine($"{indent}    [BurstCompile]");
             builder.AppendLine($"{indent}    public void OnDestroy(ref SystemState state)");
             builder.AppendLine($"{indent}    {{");
-            builder.AppendLine($"{indent}        RequestOwner<{model.FullName}>.OnDestroy(ref state);");
+            builder.AppendLine($"{indent}        {CoreNamespace}.RequestOwner<{model.FullName}>.OnDestroy(ref state);");
+            builder.AppendLine($"{indent}    }}");
+            builder.AppendLine($"{indent}}}");
+            builder.AppendLine();
+            builder.AppendLine($"{indent}internal static class {model.Name}{BridgeInitSuffix}");
+            builder.AppendLine($"{indent}{{");
+            builder.AppendLine($"{indent}    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterAssembliesLoaded)]");
+            builder.AppendLine($"{indent}#if UNITY_EDITOR");
+            builder.AppendLine($"{indent}    [UnityEditor.InitializeOnLoadMethod]");
+            builder.AppendLine($"{indent}#endif");
+            builder.AppendLine($"{indent}    private static void Init()");
+            builder.AppendLine($"{indent}    {{");
+            builder.AppendLine($"{indent}        TypeManager.Initialize();");
+            builder.AppendLine($"{indent}        {CoreNamespace}.RequestBridge<{model.FullName}>.Publish(TypeManager.GetSystemTypeIndex<{systemName}>());");
             builder.AppendLine($"{indent}    }}");
             builder.AppendLine($"{indent}}}");
 
