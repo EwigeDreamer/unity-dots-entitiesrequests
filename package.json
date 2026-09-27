@@ -5,8 +5,8 @@
   "description": "Request system for Unity DOTS",
   "unity": "6000.0",
   "dependencies": {
-    "com.unity.entities": "1.4.5",
-    "com.unity.collections": "2.6.5",
+    "com.unity.entities": "1.4.2",
+    "com.unity.collections": "2.6.2",
     "com.unity.burst": "1.8.27"
   },
   "keywords": [

@@ -55,7 +55,7 @@ namespace ED.DOTS.EntitiesRequests
                 return ReadOnlySpan<T>.Empty;
             }
 
-            return _data->_buffer->AsReadOnlySpan();
+            return new ReadOnlySpan<T>(_data->_buffer->Ptr, _data->_buffer->Length);
         }
 
         /// <summary>Clears the read buffer. Must be called explicitly after processing.</summary>

@@ -20,6 +20,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - Generated file names are unique per request type (hash of the full type name): two types may share a short name in different namespaces.
+- `RequestReader<T>.Read()` no longer calls `UnsafeList<T>.AsReadOnlySpan()`, which exists only in the editor-bundled Collections 6.x. It now builds a `ReadOnlySpan<T>` from the list's `Ptr`/`Length`, so the package compiles against `com.unity.collections` 2.6.x.
+
+### Dependencies
+- Minimum versions lowered to the tested stack: `com.unity.entities` 1.4.2, `com.unity.collections` 2.6.2, `com.unity.burst` 1.8.27.
 
 ## [1.1.2] - 2026-09-20
 
