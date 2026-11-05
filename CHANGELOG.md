@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.1] - 2026-11-05
+
+### Fixed
+- A failed log write no longer throws out of the generator. When several Unity instances compiled at the same time, the shared log file was locked, the write threw, and Roslyn discarded the whole generator output (`CS8785`), leaving `*_RequestSystem` types missing.
+
 ## [2.0.0] - 2026-09-26
 
 ### Changed

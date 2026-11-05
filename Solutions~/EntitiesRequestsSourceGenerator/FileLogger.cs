@@ -23,8 +23,15 @@ namespace Utilities
         /// <param name="logFileName">Optional log file name. Defaults to "Log.txt".</param>
         public FileLogger(string projectName, string logFileName = "Log.txt")
         {
-            var directoryName = Path.Combine(BaseLogFolder, projectName);
-            _filePath = Path.Combine(Path.GetTempPath(), directoryName, logFileName);
+            try
+            {
+                var directoryName = Path.Combine(BaseLogFolder, projectName);
+                _filePath = Path.Combine(Path.GetTempPath(), directoryName, logFileName);
+            }
+            catch
+            {
+                _filePath = null;
+            }
         }
 
         private void EnsureLogDirectory()
@@ -40,10 +47,20 @@ namespace Utilities
 
         private void Log(LogLevel level, string message)
         {
-            lock (Lock)
+            if (_filePath == null)
+                return;
+
+            try
             {
-                EnsureLogDirectory();
-                File.AppendAllText(_filePath, $"{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} [{level}]: {message}{Environment.NewLine}");
+                lock (Lock)
+                {
+                    EnsureLogDirectory();
+                    File.AppendAllText(_filePath, $"{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} [{level}]: {message}{Environment.NewLine}");
+                }
+            }
+            catch
+            {
+                // Diagnostics must never break source generation.
             }
         }
     }
